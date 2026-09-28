@@ -12,6 +12,7 @@ Same 300-tree random forest for all three representations.
 |---|---|---|---|---|
 | Classification (116 UCR) | Accuracy | 0.730 | 0.755 | **0.783** |
 | | Features | 566 | 598 | **138** |
+| | Total time (s) | 0.64 | 0.82 | **0.57** |
 | Regression (26 TSER) | RMSE | 138.83 | 151.67 | **138.33** |
 | | Features | 1839 | 1955 | **134** |
 | | Total time (s) | 16.59 | 18.14 | **1.51** |
