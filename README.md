@@ -18,8 +18,8 @@ Same 300-tree random forest for all three representations.
 
 ## Contents
 
-- `chebyshev_vs_wavelet_stft_rocket_v17_per_dataset_6_.ipynb`: UCR classification benchmark
-- `stct_regression_tser_benchmark_5_per_dataset_6_.ipynb`: TSER regression benchmark
+- `stct_classification.ipynb`: UCR classification benchmark
+- `stct_regression.ipynb`: TSER regression benchmark
 
 ## Usage
 
@@ -31,16 +31,6 @@ Open a notebook (Colab or Jupyter) and run all cells. Datasets download automati
 
 Default STCT setting: degree 4, two scales (8 and 16 windows).
 
-## Citation
-
-```bibtex
-@article{belhaouari_stct,
-  title   = {Short-Time Chebyshev Transform: Efficient Local Polynomial Representations of Time Series},
-  author  = {Belhaouari, Samir Brahim and Bensegueni, Skander and Bouzerdoum, Abdessalam and Bermak, Amine and Kahalan, Yunis Carreon},
-  journal = {Neural Processing Letters},
-  note    = {Under review}
-}
-```
 
 ## Contact
 
