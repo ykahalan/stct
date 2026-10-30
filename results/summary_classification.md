@@ -6,24 +6,28 @@
 
 |                    |   mean |   mean_rank |   best_on |
 |:-------------------|-------:|------------:|----------:|
-| HC2                | 0.8764 |      5.4464 |         8 |
-| MR-Hydra           | 0.868  |      6.4286 |         9 |
-| MultiROCKET        | 0.8657 |      6.875  |         2 |
-| RDST               | 0.8631 |      8.1696 |         5 |
-| rppv128_p2:ridge   | 0.8607 |      8.25   |         4 |
-| InceptionTime      | 0.8578 |      8.4911 |        13 |
-| ROCKET             | 0.8558 |      8.5357 |         1 |
-| rppv128_diff:ridge | 0.8597 |      8.558  |         7 |
-| QUANT              | 0.8544 |      8.5848 |         7 |
-| minirocket:ridge   | 0.8597 |      8.75   |         0 |
-| WEASEL-2.0         | 0.8605 |      8.8571 |         4 |
-| MiniROCKET         | 0.858  |      8.9821 |         0 |
-| rppv128:ridge      | 0.8572 |      9.3125 |         2 |
-| fixed+pooled:et    | 0.8453 |     10.3571 |         3 |
-| FreshPRINCE        | 0.8416 |     10.3571 |         9 |
-| fixed:rf           | 0.7816 |     14.0982 |         0 |
-| Catch22            | 0.7814 |     15.0982 |         1 |
-| 1NN-DTW            | 0.7421 |     15.8482 |         1 |
+| HC2                | 0.8764 |      6.2634 |         6 |
+| MR-Hydra           | 0.868  |      7.4286 |         9 |
+| MultiROCKET        | 0.8657 |      7.942  |         2 |
+| RDST               | 0.8631 |      9.442  |         4 |
+| rppv128_p2:ridge   | 0.8607 |      9.5045 |         4 |
+| QUANT              | 0.8544 |      9.7902 |         7 |
+| rppv128_diff:ridge | 0.8597 |      9.8348 |         6 |
+| ROCKET             | 0.8558 |      9.8839 |         1 |
+| InceptionTime      | 0.8578 |      9.9688 |        13 |
+| minirocket:ridge   | 0.8597 |     10.0714 |         0 |
+| WEASEL-2.0         | 0.8605 |     10.1518 |         4 |
+| MiniROCKET         | 0.858  |     10.2857 |         0 |
+| rppv128:ridge      | 0.8572 |     10.75   |         2 |
+| pyr3:et            | 0.846  |     11.1116 |         1 |
+| fixed+pooled:et    | 0.8453 |     12.0179 |         2 |
+| FreshPRINCE        | 0.8416 |     12.0848 |         9 |
+| msP7+pooled:et     | 0.8447 |     12.1384 |         2 |
+| msP7:et            | 0.807  |     14.3438 |         0 |
+| ms5:et             | 0.8024 |     15.308  |         0 |
+| fixed:rf           | 0.7816 |     17.3705 |         0 |
+| Catch22            | 0.7814 |     18.1384 |         1 |
+| 1NN-DTW            | 0.7421 |     19.1696 |         1 |
 
 ## Pairwise: each STCT variant vs each reference (wins/ties/losses on accuracy, Wilcoxon p)
 
@@ -41,6 +45,30 @@
 | fixed:rf           | WEASEL-2.0    |     21 |      6 |       85 |       0      |     -0.0789 |
 | fixed:rf           | Catch22       |     67 |      7 |       38 |       0.103  |      0.0002 |
 | fixed:rf           | 1NN-DTW       |     74 |      8 |       30 |       0.0001 |      0.0395 |
+| ms5:et             | HC2           |     13 |     11 |       88 |       0      |     -0.074  |
+| ms5:et             | MR-Hydra      |     15 |     10 |       87 |       0      |     -0.0656 |
+| ms5:et             | InceptionTime |     27 |     12 |       73 |       0      |     -0.0554 |
+| ms5:et             | MultiROCKET   |     18 |     10 |       84 |       0      |     -0.0633 |
+| ms5:et             | MiniROCKET    |     22 |     11 |       79 |       0      |     -0.0557 |
+| ms5:et             | ROCKET        |     25 |      8 |       79 |       0      |     -0.0534 |
+| ms5:et             | FreshPRINCE   |     27 |     11 |       74 |       0      |     -0.0392 |
+| ms5:et             | RDST          |     23 |      8 |       81 |       0      |     -0.0607 |
+| ms5:et             | QUANT         |     20 |      9 |       83 |       0      |     -0.052  |
+| ms5:et             | WEASEL-2.0    |     25 |      8 |       79 |       0      |     -0.0581 |
+| ms5:et             | Catch22       |     74 |      4 |       34 |       0.0003 |      0.021  |
+| ms5:et             | 1NN-DTW       |     82 |      8 |       22 |       0      |      0.0603 |
+| msP7:et            | HC2           |     14 |     15 |       83 |       0      |     -0.0694 |
+| msP7:et            | MR-Hydra      |     21 |     11 |       80 |       0      |     -0.061  |
+| msP7:et            | InceptionTime |     31 |      9 |       72 |       0      |     -0.0507 |
+| msP7:et            | MultiROCKET   |     22 |     10 |       80 |       0      |     -0.0586 |
+| msP7:et            | MiniROCKET    |     25 |     13 |       74 |       0      |     -0.051  |
+| msP7:et            | ROCKET        |     30 |      9 |       73 |       0      |     -0.0488 |
+| msP7:et            | FreshPRINCE   |     38 |     11 |       63 |       0.0011 |     -0.0346 |
+| msP7:et            | RDST          |     26 |     13 |       73 |       0      |     -0.0561 |
+| msP7:et            | QUANT         |     18 |     17 |       77 |       0      |     -0.0474 |
+| msP7:et            | WEASEL-2.0    |     29 |      9 |       74 |       0      |     -0.0535 |
+| msP7:et            | Catch22       |     76 |      7 |       29 |       0      |      0.0257 |
+| msP7:et            | 1NN-DTW       |     81 |      8 |       23 |       0      |      0.065  |
 | fixed+pooled:et    | HC2           |     16 |     18 |       78 |       0      |     -0.0312 |
 | fixed+pooled:et    | MR-Hydra      |     23 |     12 |       77 |       0      |     -0.0228 |
 | fixed+pooled:et    | InceptionTime |     42 |     10 |       60 |       0.0051 |     -0.0125 |
@@ -53,6 +81,30 @@
 | fixed+pooled:et    | WEASEL-2.0    |     38 |     10 |       64 |       0.0005 |     -0.0152 |
 | fixed+pooled:et    | Catch22       |     94 |      5 |       13 |       0      |      0.0639 |
 | fixed+pooled:et    | 1NN-DTW       |     97 |      6 |        9 |       0      |      0.1032 |
+| msP7+pooled:et     | HC2           |     16 |     15 |       81 |       0      |     -0.0317 |
+| msP7+pooled:et     | MR-Hydra      |     21 |     19 |       72 |       0      |     -0.0233 |
+| msP7+pooled:et     | InceptionTime |     42 |     12 |       58 |       0.0161 |     -0.0131 |
+| msP7+pooled:et     | MultiROCKET   |     25 |     15 |       72 |       0      |     -0.021  |
+| msP7+pooled:et     | MiniROCKET    |     35 |     14 |       63 |       0.0022 |     -0.0133 |
+| msP7+pooled:et     | ROCKET        |     34 |     15 |       63 |       0.0024 |     -0.0111 |
+| msP7+pooled:et     | FreshPRINCE   |     48 |     12 |       52 |       0.85   |      0.0031 |
+| msP7+pooled:et     | RDST          |     34 |     10 |       68 |       0.0001 |     -0.0184 |
+| msP7+pooled:et     | QUANT         |     31 |     19 |       62 |       0.0047 |     -0.0097 |
+| msP7+pooled:et     | WEASEL-2.0    |     33 |     11 |       68 |       0.0004 |     -0.0158 |
+| msP7+pooled:et     | Catch22       |     88 |      9 |       15 |       0      |      0.0634 |
+| msP7+pooled:et     | 1NN-DTW       |     97 |      6 |        9 |       0      |      0.1027 |
+| pyr3:et            | HC2           |     20 |     16 |       76 |       0      |     -0.0304 |
+| pyr3:et            | MR-Hydra      |     29 |     12 |       71 |       0      |     -0.022  |
+| pyr3:et            | InceptionTime |     43 |     12 |       57 |       0.0473 |     -0.0117 |
+| pyr3:et            | MultiROCKET   |     29 |     16 |       67 |       0      |     -0.0196 |
+| pyr3:et            | MiniROCKET    |     36 |     18 |       58 |       0.0195 |     -0.012  |
+| pyr3:et            | ROCKET        |     40 |     12 |       60 |       0.0288 |     -0.0098 |
+| pyr3:et            | FreshPRINCE   |     57 |     13 |       42 |       0.4668 |      0.0044 |
+| pyr3:et            | RDST          |     39 |     10 |       63 |       0.0024 |     -0.0171 |
+| pyr3:et            | QUANT         |     35 |     17 |       60 |       0.0144 |     -0.0084 |
+| pyr3:et            | WEASEL-2.0    |     39 |     10 |       63 |       0.0054 |     -0.0145 |
+| pyr3:et            | Catch22       |     88 |      9 |       15 |       0      |      0.0647 |
+| pyr3:et            | 1NN-DTW       |     98 |      6 |        8 |       0      |      0.104  |
 | rppv128:ridge      | HC2           |     24 |     13 |       75 |       0      |     -0.0193 |
 | rppv128:ridge      | MR-Hydra      |     31 |     13 |       68 |       0.0005 |     -0.0109 |
 | rppv128:ridge      | InceptionTime |     46 |     10 |       56 |       0.2515 |     -0.0006 |
@@ -106,15 +158,45 @@
 
 | a                  | b                  |   a_wins |   ties |   b_wins |   wilcoxon_p |
 |:-------------------|:-------------------|---------:|-------:|---------:|-------------:|
+| fixed:rf           | ms5:et             |       21 |     11 |       80 |       0      |
+| fixed:rf           | msP7:et            |       18 |      9 |       85 |       0      |
 | fixed:rf           | fixed+pooled:et    |       15 |      9 |       88 |       0      |
+| fixed:rf           | msP7+pooled:et     |       15 |      7 |       90 |       0      |
+| fixed:rf           | pyr3:et            |       10 |      8 |       94 |       0      |
 | fixed:rf           | rppv128:ridge      |       14 |     10 |       88 |       0      |
 | fixed:rf           | rppv128_diff:ridge |       14 |      6 |       92 |       0      |
 | fixed:rf           | rppv128_p2:ridge   |       13 |      9 |       90 |       0      |
 | fixed:rf           | minirocket:ridge   |       15 |     11 |       86 |       0      |
+| ms5:et             | msP7:et            |       35 |     18 |       59 |       0.0114 |
+| ms5:et             | fixed+pooled:et    |       22 |     16 |       74 |       0      |
+| ms5:et             | msP7+pooled:et     |       22 |     14 |       76 |       0      |
+| ms5:et             | pyr3:et            |       15 |     13 |       84 |       0      |
+| ms5:et             | rppv128:ridge      |       25 |     11 |       76 |       0      |
+| ms5:et             | rppv128_diff:ridge |       24 |      9 |       79 |       0      |
+| ms5:et             | rppv128_p2:ridge   |       19 |     11 |       82 |       0      |
+| ms5:et             | minirocket:ridge   |       23 |     14 |       75 |       0      |
+| msP7:et            | fixed+pooled:et    |       29 |     16 |       67 |       0      |
+| msP7:et            | msP7+pooled:et     |       24 |     19 |       69 |       0      |
+| msP7:et            | pyr3:et            |       15 |     19 |       78 |       0      |
+| msP7:et            | rppv128:ridge      |       28 |     14 |       70 |       0      |
+| msP7:et            | rppv128_diff:ridge |       28 |     11 |       73 |       0      |
+| msP7:et            | rppv128_p2:ridge   |       23 |     11 |       78 |       0      |
+| msP7:et            | minirocket:ridge   |       26 |     10 |       76 |       0      |
+| fixed+pooled:et    | msP7+pooled:et     |       43 |     27 |       42 |       0.8523 |
+| fixed+pooled:et    | pyr3:et            |       37 |     23 |       52 |       0.0955 |
 | fixed+pooled:et    | rppv128:ridge      |       40 |     12 |       60 |       0.0047 |
 | fixed+pooled:et    | rppv128_diff:ridge |       34 |     10 |       68 |       0.0003 |
 | fixed+pooled:et    | rppv128_p2:ridge   |       30 |     16 |       66 |       0.0003 |
 | fixed+pooled:et    | minirocket:ridge   |       32 |     16 |       64 |       0.0003 |
+| msP7+pooled:et     | pyr3:et            |       32 |     23 |       57 |       0.0782 |
+| msP7+pooled:et     | rppv128:ridge      |       43 |      9 |       60 |       0.0088 |
+| msP7+pooled:et     | rppv128_diff:ridge |       34 |     10 |       68 |       0.0005 |
+| msP7+pooled:et     | rppv128_p2:ridge   |       32 |     17 |       63 |       0.0004 |
+| msP7+pooled:et     | minirocket:ridge   |       32 |     18 |       62 |       0.0004 |
+| pyr3:et            | rppv128:ridge      |       43 |     10 |       59 |       0.0659 |
+| pyr3:et            | rppv128_diff:ridge |       36 |     12 |       64 |       0.007  |
+| pyr3:et            | rppv128_p2:ridge   |       39 |     16 |       57 |       0.0012 |
+| pyr3:et            | minirocket:ridge   |       37 |     18 |       57 |       0.0074 |
 | rppv128:ridge      | rppv128_diff:ridge |       36 |     17 |       59 |       0.0604 |
 | rppv128:ridge      | rppv128_p2:ridge   |       35 |     18 |       59 |       0.0148 |
 | rppv128:ridge      | minirocket:ridge   |       44 |     20 |       48 |       0.4281 |

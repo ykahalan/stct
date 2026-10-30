@@ -6,26 +6,29 @@
 
 |                   |     mean |   mean_rank |   best_on |   mean_rel_rmse |   median_rel_rmse |
 |:------------------|---------:|------------:|----------:|----------------:|------------------:|
-| fixed+pooled:et   |  110.044 |      6.3077 |         2 |          1.4966 |            1.2279 |
-| plus:et           |  109.453 |      6.3077 |         1 |          1.4807 |            1.2304 |
-| minirocket:ridge  |  124.082 |      6.8462 |         2 |          2.542  |            1.2504 |
-| base+rppv32:ridge |  141.272 |      6.9615 |         0 |          1.419  |            1.1892 |
-| rppv128:ridge     |  133.027 |      7.0385 |         1 |          1.4437 |            1.1838 |
-| rppv64:ridge      |  141.549 |      7.1154 |         2 |          1.4415 |            1.2228 |
-| DrCIF             |  105.584 |      7.1154 |         1 |          1.528  |            1.2509 |
-| FreshPRINCE       |  123.212 |      8.5    |         2 |          1.5425 |            1.2869 |
-| InceptionTime     |  128.912 |      9.7692 |         3 |          1.8557 |            1.3491 |
-| RotF              |  161.025 |     10.1538 |         5 |          2.6388 |            1.4139 |
-| ROCKET            |  157.998 |     10.3846 |         3 |          3.5885 |            1.3356 |
-| fixed:rf          |  138.324 |     10.5769 |         0 |          2.2348 |            1.3459 |
-| RandF             |  159.715 |     12.5    |         0 |          2.2186 |            1.6122 |
-| Ridge             | 2220.62  |     12.6923 |         1 |         67.2496 |            1.4664 |
-| XGBoost           |  179.227 |     13.5385 |         0 |          2.515  |            1.5915 |
-| GridSVR           |  219.129 |     13.6154 |         2 |          5.3399 |            1.5688 |
-| ResNet            |  242.422 |     14.3846 |         0 |          4.2199 |            1.5575 |
-| FPCR              |  208.702 |     14.6154 |         0 |          3.5095 |            1.7593 |
-| 1NN-DTW           |  193.866 |     15.0385 |         0 |          2.399  |            1.6577 |
-| FCN               |  290.396 |     16.5385 |         1 |          5.0002 |            2.547  |
+| ms5+pooled:et     |  109.867 |      6.9615 |         1 |          1.4299 |            1.1951 |
+| msP7+pooled:et    |  108.57  |      7.4615 |         1 |          1.4158 |            1.2132 |
+| fixed+pooled:et   |  110.044 |      7.5769 |         1 |          1.494  |            1.2279 |
+| pyr3:et           |  106.554 |      8      |         2 |          1.5028 |            1.2174 |
+| ms5:et            |  112.756 |      8.0385 |         2 |          1.6616 |            1.2451 |
+| msP7:et           |  107.91  |      8.3846 |         0 |          1.652  |            1.2251 |
+| base+rppv32:ridge |  141.272 |      8.4231 |         0 |          1.4194 |            1.1892 |
+| minirocket:ridge  |  124.082 |      8.5    |         2 |          2.5395 |            1.255  |
+| rppv128:ridge     |  133.027 |      8.6538 |         3 |          1.4468 |            1.1838 |
+| DrCIF             |  105.584 |      8.7692 |         0 |          1.5224 |            1.2541 |
+| FreshPRINCE       |  123.212 |     10.8462 |         1 |          1.5377 |            1.2983 |
+| InceptionTime     |  128.912 |     12.0769 |         2 |          1.8489 |            1.3491 |
+| RotF              |  161.025 |     12.4231 |         5 |          2.6278 |            1.4156 |
+| ROCKET            |  157.998 |     12.6538 |         2 |          3.6059 |            1.3356 |
+| fixed:rf          |  138.324 |     13.3077 |         0 |          2.2228 |            1.3459 |
+| Ridge             | 2220.62  |     15.1154 |         1 |         66.7658 |            1.4816 |
+| RandF             |  159.715 |     15.2308 |         0 |          2.2021 |            1.6122 |
+| GridSVR           |  219.129 |     16.1154 |         2 |          5.3391 |            1.557  |
+| XGBoost           |  179.227 |     16.2308 |         0 |          2.4985 |            1.5915 |
+| ResNet            |  242.422 |     16.9615 |         0 |          4.2127 |            1.5575 |
+| FPCR              |  208.702 |     17.1154 |         0 |          3.4908 |            1.7593 |
+| 1NN-DTW           |  193.866 |     17.8846 |         0 |          2.3911 |            1.6577 |
+| FCN               |  290.396 |     19.2692 |         1 |          4.9795 |            2.5695 |
 
 ## Pairwise: each STCT variant vs each reference (wins/ties/losses on RMSE, Wilcoxon p)
 
@@ -44,6 +47,32 @@
 | fixed:rf          | GridSVR       |     19 |      0 |        7 |       0.0151 |    -80.805  |
 | fixed:rf          | ResNet        |     18 |      0 |        8 |       0.013  |   -104.099  |
 | fixed:rf          | FCN           |     21 |      0 |        5 |       0.0002 |   -152.072  |
+| ms5:et            | FreshPRINCE   |     19 |      0 |        7 |       0.014  |    -10.4562 |
+| ms5:et            | DrCIF         |     11 |      0 |       15 |       0.6171 |      7.1721 |
+| ms5:et            | InceptionTime |     17 |      0 |        9 |       0.237  |    -16.1565 |
+| ms5:et            | ROCKET        |     18 |      0 |        8 |       0.1814 |    -45.2419 |
+| ms5:et            | RotF          |     18 |      0 |        8 |       0.1048 |    -48.2692 |
+| ms5:et            | Ridge         |     21 |      0 |        5 |       0.0254 |  -2107.86   |
+| ms5:et            | XGBoost       |     23 |      0 |        3 |       0.0029 |    -66.4711 |
+| ms5:et            | RandF         |     22 |      0 |        4 |       0.0073 |    -46.9595 |
+| ms5:et            | 1NN-DTW       |     24 |      0 |        2 |       0.0004 |    -81.1103 |
+| ms5:et            | FPCR          |     22 |      0 |        4 |       0.0016 |    -95.9466 |
+| ms5:et            | GridSVR       |     22 |      0 |        4 |       0.0051 |   -106.373  |
+| ms5:et            | ResNet        |     22 |      0 |        4 |       0      |   -129.667  |
+| ms5:et            | FCN           |     24 |      0 |        2 |       0      |   -177.641  |
+| msP7:et           | FreshPRINCE   |     19 |      0 |        7 |       0.0163 |    -15.3019 |
+| msP7:et           | DrCIF         |     12 |      0 |       14 |       1      |      2.3264 |
+| msP7:et           | InceptionTime |     18 |      0 |        8 |       0.1048 |    -21.0022 |
+| msP7:et           | ROCKET        |     18 |      0 |        8 |       0.0594 |    -50.0876 |
+| msP7:et           | RotF          |     18 |      0 |        8 |       0.1048 |    -53.1149 |
+| msP7:et           | Ridge         |     22 |      0 |        4 |       0.0036 |  -2112.71   |
+| msP7:et           | XGBoost       |     23 |      0 |        3 |       0.0027 |    -71.3168 |
+| msP7:et           | RandF         |     21 |      0 |        5 |       0.0073 |    -51.8052 |
+| msP7:et           | 1NN-DTW       |     24 |      0 |        2 |       0.0003 |    -85.956  |
+| msP7:et           | FPCR          |     22 |      0 |        4 |       0.0036 |   -100.792  |
+| msP7:et           | GridSVR       |     22 |      0 |        4 |       0.0056 |   -111.219  |
+| msP7:et           | ResNet        |     21 |      0 |        5 |       0      |   -134.512  |
+| msP7:et           | FCN           |     24 |      0 |        2 |       0      |   -182.486  |
 | fixed+pooled:et   | FreshPRINCE   |     19 |      0 |        7 |       0.089  |    -13.1681 |
 | fixed+pooled:et   | DrCIF         |     16 |      0 |       10 |       0.9205 |      4.4603 |
 | fixed+pooled:et   | InceptionTime |     17 |      0 |        9 |       0.5317 |    -18.8684 |
@@ -57,19 +86,45 @@
 | fixed+pooled:et   | GridSVR       |     22 |      0 |        4 |       0.0061 |   -109.085  |
 | fixed+pooled:et   | ResNet        |     24 |      0 |        2 |       0      |   -132.379  |
 | fixed+pooled:et   | FCN           |     24 |      0 |        2 |       0      |   -180.352  |
-| plus:et           | FreshPRINCE   |     22 |      0 |        4 |       0.0056 |    -13.759  |
-| plus:et           | DrCIF         |     14 |      0 |       12 |       0.7644 |      3.8693 |
-| plus:et           | InceptionTime |     18 |      0 |        8 |       0.4227 |    -19.4593 |
-| plus:et           | ROCKET        |     18 |      0 |        8 |       0.0941 |    -48.5447 |
-| plus:et           | RotF          |     20 |      0 |        6 |       0.0312 |    -51.572  |
-| plus:et           | Ridge         |     18 |      0 |        8 |       0.3666 |  -2111.17   |
-| plus:et           | XGBoost       |     23 |      0 |        3 |       0.0005 |    -69.7739 |
-| plus:et           | RandF         |     24 |      0 |        2 |       0.0003 |    -50.2623 |
-| plus:et           | 1NN-DTW       |     23 |      0 |        3 |       0.001  |    -84.4131 |
-| plus:et           | FPCR          |     22 |      0 |        4 |       0.0036 |    -99.2494 |
-| plus:et           | GridSVR       |     22 |      0 |        4 |       0.0039 |   -109.676  |
-| plus:et           | ResNet        |     25 |      0 |        1 |       0      |   -132.969  |
-| plus:et           | FCN           |     24 |      0 |        2 |       0      |   -180.943  |
+| ms5+pooled:et     | FreshPRINCE   |     21 |      0 |        5 |       0.0102 |    -13.3449 |
+| ms5+pooled:et     | DrCIF         |     17 |      0 |        9 |       0.6348 |      4.2834 |
+| ms5+pooled:et     | InceptionTime |     18 |      0 |        8 |       0.3941 |    -19.0452 |
+| ms5+pooled:et     | ROCKET        |     19 |      0 |        7 |       0.0796 |    -48.1306 |
+| ms5+pooled:et     | RotF          |     20 |      0 |        6 |       0.0204 |    -51.1578 |
+| ms5+pooled:et     | Ridge         |     18 |      0 |        8 |       0.3533 |  -2110.75   |
+| ms5+pooled:et     | XGBoost       |     24 |      0 |        2 |       0.0004 |    -69.3597 |
+| ms5+pooled:et     | RandF         |     24 |      0 |        2 |       0.0003 |    -49.8482 |
+| ms5+pooled:et     | 1NN-DTW       |     24 |      0 |        2 |       0.0003 |    -83.9989 |
+| ms5+pooled:et     | FPCR          |     22 |      0 |        4 |       0.0036 |    -98.8352 |
+| ms5+pooled:et     | GridSVR       |     22 |      0 |        4 |       0.0061 |   -109.262  |
+| ms5+pooled:et     | ResNet        |     25 |      0 |        1 |       0      |   -132.555  |
+| ms5+pooled:et     | FCN           |     24 |      0 |        2 |       0      |   -180.529  |
+| msP7+pooled:et    | FreshPRINCE   |     21 |      0 |        5 |       0.0029 |    -14.6415 |
+| msP7+pooled:et    | DrCIF         |     15 |      0 |       11 |       0.8417 |      2.9869 |
+| msP7+pooled:et    | InceptionTime |     19 |      0 |        7 |       0.0993 |    -20.3418 |
+| msP7+pooled:et    | ROCKET        |     18 |      0 |        8 |       0.1165 |    -49.4272 |
+| msP7+pooled:et    | RotF          |     20 |      0 |        6 |       0.022  |    -52.4544 |
+| msP7+pooled:et    | Ridge         |     21 |      0 |        5 |       0.0357 |  -2112.05   |
+| msP7+pooled:et    | XGBoost       |     23 |      0 |        3 |       0.0005 |    -70.6563 |
+| msP7+pooled:et    | RandF         |     24 |      0 |        2 |       0.0003 |    -51.1448 |
+| msP7+pooled:et    | 1NN-DTW       |     24 |      0 |        2 |       0.0003 |    -85.2955 |
+| msP7+pooled:et    | FPCR          |     22 |      0 |        4 |       0.0036 |   -100.132  |
+| msP7+pooled:et    | GridSVR       |     22 |      0 |        4 |       0.0061 |   -110.558  |
+| msP7+pooled:et    | ResNet        |     24 |      0 |        2 |       0      |   -133.852  |
+| msP7+pooled:et    | FCN           |     24 |      0 |        2 |       0      |   -181.826  |
+| pyr3:et           | FreshPRINCE   |     20 |      0 |        6 |       0.0204 |    -16.6581 |
+| pyr3:et           | DrCIF         |     17 |      0 |        9 |       0.1651 |      0.9702 |
+| pyr3:et           | InceptionTime |     20 |      0 |        6 |       0.0993 |    -22.3584 |
+| pyr3:et           | ROCKET        |     19 |      0 |        7 |       0.0941 |    -51.4438 |
+| pyr3:et           | RotF          |     19 |      0 |        7 |       0.0594 |    -54.4711 |
+| pyr3:et           | Ridge         |     19 |      0 |        7 |       0.1814 |  -2114.07   |
+| pyr3:et           | XGBoost       |     23 |      0 |        3 |       0.0005 |    -72.673  |
+| pyr3:et           | RandF         |     23 |      0 |        3 |       0.0007 |    -53.1614 |
+| pyr3:et           | 1NN-DTW       |     23 |      0 |        3 |       0.0014 |    -87.3122 |
+| pyr3:et           | FPCR          |     22 |      0 |        4 |       0.0036 |   -102.148  |
+| pyr3:et           | GridSVR       |     21 |      0 |        5 |       0.0067 |   -112.575  |
+| pyr3:et           | ResNet        |     23 |      0 |        3 |       0.0001 |   -135.869  |
+| pyr3:et           | FCN           |     23 |      0 |        3 |       0      |   -183.843  |
 | rppv128:ridge     | FreshPRINCE   |     17 |      0 |        9 |       0.4227 |      9.815  |
 | rppv128:ridge     | DrCIF         |     13 |      0 |       13 |       0.4374 |     27.4433 |
 | rppv128:ridge     | InceptionTime |     14 |      0 |       12 |       0.7835 |      4.1147 |
@@ -96,19 +151,6 @@
 | base+rppv32:ridge | GridSVR       |     21 |      0 |        5 |       0.0029 |    -77.8568 |
 | base+rppv32:ridge | ResNet        |     20 |      0 |        6 |       0.0067 |   -101.15   |
 | base+rppv32:ridge | FCN           |     23 |      0 |        3 |       0      |   -149.124  |
-| rppv64:ridge      | FreshPRINCE   |     17 |      0 |        9 |       0.3533 |     18.3366 |
-| rppv64:ridge      | DrCIF         |     15 |      0 |       11 |       1      |     35.9649 |
-| rppv64:ridge      | InceptionTime |     14 |      0 |       12 |       0.7644 |     12.6363 |
-| rppv64:ridge      | ROCKET        |     15 |      0 |       11 |       0.5317 |    -16.4491 |
-| rppv64:ridge      | RotF          |     16 |      0 |       10 |       0.4227 |    -19.4763 |
-| rppv64:ridge      | Ridge         |     20 |      0 |        6 |       0.1291 |  -2079.07   |
-| rppv64:ridge      | XGBoost       |     23 |      0 |        3 |       0.0001 |    -37.6782 |
-| rppv64:ridge      | RandF         |     19 |      0 |        7 |       0.0029 |    -18.1667 |
-| rppv64:ridge      | 1NN-DTW       |     22 |      0 |        4 |       0.0086 |    -52.3175 |
-| rppv64:ridge      | FPCR          |     23 |      0 |        3 |       0.0001 |    -67.1537 |
-| rppv64:ridge      | GridSVR       |     22 |      0 |        4 |       0.0016 |    -77.5804 |
-| rppv64:ridge      | ResNet        |     23 |      0 |        3 |       0.0024 |   -100.874  |
-| rppv64:ridge      | FCN           |     24 |      0 |        2 |       0      |   -148.848  |
 | minirocket:ridge  | FreshPRINCE   |     15 |      0 |       11 |       0.5153 |      0.8698 |
 | minirocket:ridge  | DrCIF         |     15 |      0 |       11 |       0.5995 |     18.4981 |
 | minirocket:ridge  | InceptionTime |     19 |      0 |        7 |       0.3153 |     -4.8305 |
@@ -127,26 +169,50 @@
 
 | a                 | b                 |   a_wins |   ties |   b_wins |   wilcoxon_p |
 |:------------------|:------------------|---------:|-------:|---------:|-------------:|
+| fixed:rf          | ms5:et            |        3 |      0 |       23 |       0.0004 |
+| fixed:rf          | msP7:et           |        4 |      0 |       22 |       0.0032 |
 | fixed:rf          | fixed+pooled:et   |        3 |      0 |       23 |       0.0001 |
-| fixed:rf          | plus:et           |        2 |      0 |       24 |       0.0001 |
+| fixed:rf          | ms5+pooled:et     |        4 |      0 |       22 |       0.0002 |
+| fixed:rf          | msP7+pooled:et    |        4 |      0 |       22 |       0.0009 |
+| fixed:rf          | pyr3:et           |        3 |      0 |       23 |       0.0001 |
 | fixed:rf          | rppv128:ridge     |        8 |      0 |       18 |       0.0463 |
 | fixed:rf          | base+rppv32:ridge |        8 |      0 |       18 |       0.0842 |
-| fixed:rf          | rppv64:ridge      |        9 |      0 |       17 |       0.1651 |
 | fixed:rf          | minirocket:ridge  |        7 |      0 |       19 |       0.0151 |
-| fixed+pooled:et   | plus:et           |       13 |      0 |       13 |       0.5153 |
+| ms5:et            | msP7:et           |       14 |      0 |       12 |       0.5483 |
+| ms5:et            | fixed+pooled:et   |       14 |      0 |       12 |       0.3276 |
+| ms5:et            | ms5+pooled:et     |       13 |      0 |       13 |       0.5483 |
+| ms5:et            | msP7+pooled:et    |       10 |      0 |       16 |       0.3032 |
+| ms5:et            | pyr3:et           |       13 |      0 |       13 |       0.5483 |
+| ms5:et            | rppv128:ridge     |       13 |      0 |       13 |       0.7835 |
+| ms5:et            | base+rppv32:ridge |       14 |      0 |       12 |       0.9403 |
+| ms5:et            | minirocket:ridge  |       12 |      0 |       14 |       0.7644 |
+| msP7:et           | fixed+pooled:et   |       12 |      0 |       14 |       0.4227 |
+| msP7:et           | ms5+pooled:et     |       10 |      0 |       16 |       0.9403 |
+| msP7:et           | msP7+pooled:et    |       12 |      0 |       14 |       0.4992 |
+| msP7:et           | pyr3:et           |       12 |      0 |       14 |       0.6348 |
+| msP7:et           | rppv128:ridge     |       12 |      0 |       14 |       0.9007 |
+| msP7:et           | base+rppv32:ridge |       12 |      0 |       14 |       0.9602 |
+| msP7:et           | minirocket:ridge  |       12 |      0 |       14 |       0.9602 |
+| fixed+pooled:et   | ms5+pooled:et     |       12 |      0 |       14 |       0.6528 |
+| fixed+pooled:et   | msP7+pooled:et    |       16 |      0 |       10 |       1      |
+| fixed+pooled:et   | pyr3:et           |       15 |      0 |       11 |       0.8613 |
 | fixed+pooled:et   | rppv128:ridge     |       13 |      0 |       13 |       0.8613 |
 | fixed+pooled:et   | base+rppv32:ridge |       10 |      0 |       16 |       0.2799 |
-| fixed+pooled:et   | rppv64:ridge      |       11 |      0 |       15 |       0.5995 |
 | fixed+pooled:et   | minirocket:ridge  |       15 |      0 |       11 |       0.6893 |
-| plus:et           | rppv128:ridge     |       11 |      0 |       15 |       0.8028 |
-| plus:et           | base+rppv32:ridge |       10 |      0 |       16 |       0.2914 |
-| plus:et           | rppv64:ridge      |       11 |      0 |       15 |       0.8028 |
-| plus:et           | minirocket:ridge  |       14 |      0 |       12 |       0.9801 |
+| ms5+pooled:et     | msP7+pooled:et    |       17 |      0 |        9 |       0.6171 |
+| ms5+pooled:et     | pyr3:et           |       17 |      0 |        9 |       0.5317 |
+| ms5+pooled:et     | rppv128:ridge     |       13 |      0 |       13 |       0.7644 |
+| ms5+pooled:et     | base+rppv32:ridge |       12 |      0 |       14 |       0.6348 |
+| ms5+pooled:et     | minirocket:ridge  |       15 |      0 |       11 |       0.5995 |
+| msP7+pooled:et    | pyr3:et           |       16 |      0 |       10 |       0.8222 |
+| msP7+pooled:et    | rppv128:ridge     |       12 |      0 |       14 |       0.9403 |
+| msP7+pooled:et    | base+rppv32:ridge |       12 |      0 |       14 |       0.8028 |
+| msP7+pooled:et    | minirocket:ridge  |       16 |      0 |       10 |       0.3802 |
+| pyr3:et           | rppv128:ridge     |       14 |      0 |       12 |       0.6893 |
+| pyr3:et           | base+rppv32:ridge |       11 |      0 |       15 |       0.4082 |
+| pyr3:et           | minirocket:ridge  |       13 |      0 |       13 |       0.9007 |
 | rppv128:ridge     | base+rppv32:ridge |       14 |      0 |       12 |       0.9205 |
-| rppv128:ridge     | rppv64:ridge      |       15 |      0 |       11 |       0.4374 |
 | rppv128:ridge     | minirocket:ridge  |       12 |      0 |       14 |       0.7835 |
-| base+rppv32:ridge | rppv64:ridge      |       13 |      0 |       13 |       0.9205 |
 | base+rppv32:ridge | minirocket:ridge  |       12 |      0 |       14 |       0.6528 |
-| rppv64:ridge      | minirocket:ridge  |       11 |      0 |       15 |       0.4834 |
 
 ## Mean rank is the headline for regression: raw RMSE is not comparable across datasets.

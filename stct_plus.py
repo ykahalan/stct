@@ -261,6 +261,88 @@ def stct_rppv(X, params, pyramid=1, block=256, **kw):
     return np.vstack(out)
 
 
+# --------------------------------------------------------------------------
+# Multi-scale STCT pyramids (fixed, tiling windows at 1, 2, 4, ... windows)
+# --------------------------------------------------------------------------
+
+
+def _tiling(n, nw):
+    edges = np.round(np.linspace(0, n, nw + 1)).astype(int)
+    return list(zip(edges[:-1], edges[1:]))
+
+
+def _fit_windows(R, windows, degree, designs, include_residual):
+    """Coefficients (+ residual RMS) of the fit in each (a, b) window of R."""
+    n_samples = R.shape[0]
+    feats, residuals = [], []
+    for a, b in windows:
+        L = b - a
+        deg = max(1, min(degree, L - 2))
+        if (L, deg) not in designs:
+            designs[(L, deg)] = _cheby_design(L, deg)
+        Phi, pinv = designs[(L, deg)]
+        W = R[:, a:b]
+        c = W @ pinv.T
+        res = W - c @ Phi.T
+        if deg < degree:
+            c = np.hstack([c, np.zeros((n_samples, degree - deg))])
+        feats.append(c)
+        if include_residual:
+            feats.append(np.sqrt((res**2).mean(axis=1, keepdims=True)))
+        residuals.append(res)
+    return feats, residuals
+
+
+PRIMES = (1, 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31)
+
+
+def stct_pyramid(X, levels=7, degree=4, detail=False, include_residual=True, min_len=None,
+                 overlap=1, counts=None):
+    """Multi-scale STCT over a ladder of window counts.
+
+    The ladder is dyadic (1, 2, 4, ... 2**(levels-1) windows) unless ``counts``
+    is given, e.g. ``PRIMES[:7]`` for 1, 2, 3, 5, 7, 11, 13 windows: prime
+    counts never share window boundaries, so every scale cuts the series
+    differently, whereas dyadic levels nest.
+    ``overlap=1`` tiles each level (as the paper's windows do, up to rounding);
+    ``overlap=k`` slides the same windows with stride length/k, so a pattern
+    straddling two tiles is still seen whole by some window.
+    ``detail=False``: every level fits the series itself.  ``detail=True``:
+    level j fits the residual left by level j-1's tiling fit, so each scale
+    carries only what coarser scales missed (a polynomial analogue of a wavelet
+    detail decomposition).  Levels whose windows would be shorter than
+    ``min_len`` (default degree + 2) are dropped.
+    """
+    X = np.asarray(X, dtype=float)
+    n_samples, n = X.shape
+    min_len = min_len or (degree + 2)
+    R = X.copy()
+    designs = {}
+    feats = []
+    ladder = list(counts) if counts is not None else [2**j for j in range(levels)]
+    for nw in ladder:
+        if n // nw < min_len:
+            continue
+        tiles = _tiling(n, nw)
+        if overlap > 1:
+            L = n // nw
+            step = max(1, L // overlap)
+            starts = list(range(0, n - L + 1, step))
+            if starts[-1] != n - L:
+                starts.append(n - L)
+            windows = [(s, s + L) for s in starts]
+        else:
+            windows = tiles
+        f, res = _fit_windows(R, windows, degree, designs, include_residual)
+        feats += f
+        if detail:
+            if windows is not tiles:
+                _, res = _fit_windows(R, tiles, degree, designs, False)
+            for (a, b), r in zip(tiles, res):
+                R[:, a:b] = r
+    return np.concatenate(feats, axis=1)
+
+
 def stct_pooled(
     X,
     fractions=(1 / 32, 1 / 16, 1 / 8, 1 / 4),

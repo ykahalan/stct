@@ -158,7 +158,44 @@ def _rppv(n_dir=32, n_biases=5, diff=False, pyramid=1, **kw):
     return fn
 
 
+PRIME_FRACS = (1 / 3, 1 / 5, 1 / 7, 1 / 11, 1 / 13, 1 / 19, 1 / 29)
+
 FEATURES = {
+    # round 11: non-dyadic ladders (prime, ternary, fives, sevens, dense) and prime pooled scales
+    "msP7": _both(lambda X: SP.stct_pyramid(X, counts=SP.PRIMES[:7])),
+    "msP10": _both(lambda X: SP.stct_pyramid(X, counts=SP.PRIMES[:10])),
+    "msT4": _both(lambda X: SP.stct_pyramid(X, counts=(1, 3, 9, 27))),
+    "msF3": _both(lambda X: SP.stct_pyramid(X, counts=(1, 5, 25))),
+    "msS3": _both(lambda X: SP.stct_pyramid(X, counts=(1, 7, 49))),
+    "msAll16": _both(lambda X: SP.stct_pyramid(X, counts=tuple(range(1, 17)))),
+    "msP7+pooled": _both(lambda X: np.hstack([SP.stct_pyramid(X, counts=SP.PRIMES[:7]), SP.stct_pooled(X)])),
+    "basePrimes": _both(lambda X: np.hstack([SP.stct_fixed(X), SP.stct_pooled(X, fractions=PRIME_FRACS)])),
+    "pyr3Primes": _both(lambda X: np.hstack([SP.stct_fixed(X), SP.stct_pooled(X, fractions=PRIME_FRACS, pyramid=3)])),
+    # round 10: pooled position pyramid + shallow dyadic multi-scale block
+    "pyr4": _both(lambda X: SP.stct_plus(X, diff=False, pyramid=4)),
+    "pyr3+ms5": _both(lambda X: np.hstack([SP.stct_plus(X, diff=False, pyramid=3),
+                                           SP.stct_pyramid(X, levels=5)])),
+    "pooledpyr3+ms5": _both(lambda X: np.hstack([SP.stct_pooled(X, pyramid=3),
+                                                 SP.stct_pyramid(X, levels=5)])),
+    "ms5+pooled": _both(lambda X: np.hstack([SP.stct_pyramid(X, levels=5), SP.stct_pooled(X)])),
+    # round 9: overlapping windows in the pyramids
+    "ms7o2": _both(lambda X: SP.stct_pyramid(X, levels=7, overlap=2)),
+    "ms7o4": _both(lambda X: SP.stct_pyramid(X, levels=7, overlap=4)),
+    "lap7o2": _both(lambda X: SP.stct_pyramid(X, levels=7, detail=True, overlap=2)),
+    "lap7o4": _both(lambda X: SP.stct_pyramid(X, levels=7, detail=True, overlap=4)),
+    "ms7o2+pooled": _both(lambda X: np.hstack([SP.stct_pyramid(X, levels=7, overlap=2), SP.stct_pooled(X)])),
+    "lap7o2+pooled": _both(lambda X: np.hstack([
+        SP.stct_pyramid(X, levels=7, detail=True, overlap=2), SP.stct_pooled(X)])),
+    # round 8: multi-scale pyramids (fixed tiling windows at 1, 2, 4, ... windows)
+    "ms5": _both(lambda X: SP.stct_pyramid(X, levels=5)),
+    "ms7": _both(lambda X: SP.stct_pyramid(X, levels=7)),
+    "lap5": _both(lambda X: SP.stct_pyramid(X, levels=5, detail=True)),
+    "lap7": _both(lambda X: SP.stct_pyramid(X, levels=7, detail=True)),
+    "ms7+pooled": _both(lambda X: np.hstack([SP.stct_pyramid(X, levels=7), SP.stct_pooled(X)])),
+    "lap7+pooled": _both(lambda X: np.hstack([SP.stct_pyramid(X, levels=7, detail=True), SP.stct_pooled(X)])),
+    "lap7+pooled+diff": _both(lambda X: np.hstack([
+        SP.stct_pyramid(X, levels=7, detail=True), SP.stct_pooled(X),
+        SP.stct_pyramid(np.diff(X, axis=1), levels=7, detail=True)])),
     # round 7: combinations at a 3k-9k feature budget
     "rppv128_diff": _rppv(128, diff=True),
     "rppv128_b9": _rppv(128, 9),
