@@ -164,6 +164,103 @@ def _window_lengths(T, fractions, degree, min_len=None):
     return out
 
 
+def _pyramid_pool(Cx, stats, levels):
+    """Pool over the whole position axis, then over 2, 4, ... segments of it."""
+    parts = [_pool(Cx, stats)]
+    t = Cx.shape[2]
+    for lvl in range(1, levels):
+        k = 2**lvl
+        edges = np.linspace(0, t, k + 1).astype(int)
+        for a, b in zip(edges[:-1], edges[1:]):
+            parts.append(_pool(Cx[:, :, a:max(b, a + 1)], stats))
+    return np.concatenate(parts, axis=1)
+
+
+def stct_channels(X, fractions=(1 / 32, 1 / 16, 1 / 8, 1 / 4), degree=4, min_len=None, overlap=8):
+    """The sliding STCT channels at every scale: list of (n, degree + 2, n_windows) arrays."""
+    X = np.asarray(X, dtype=float)
+    n_samples, T = X.shape
+    out = []
+    for L in _window_lengths(T, fractions, degree, min_len):
+        deg = max(1, min(degree, L - 2))
+        stride = 1 if overlap is None else max(1, L // overlap)
+        Cx = _windowed_coefficients(X, L, deg, stride)
+        if deg < degree:
+            pad = np.zeros((n_samples, degree - deg, Cx.shape[2]))
+            Cx = np.concatenate([Cx[:, : deg + 1], pad, Cx[:, deg + 1 :]], axis=1)
+        out.append(Cx)
+    return out
+
+
+def ppv_biases(X, n_biases=5, **kw):
+    """Per-(scale, channel) bias values: quantiles of the training channel values."""
+    qs = np.linspace(0, 1, n_biases + 2)[1:-1]
+    return [np.quantile(Cx.transpose(1, 0, 2).reshape(Cx.shape[1], -1), qs, axis=1)
+            for Cx in stct_channels(X, **kw)]  # each (n_biases, ch)
+
+
+def stct_ppv(X, biases, **kw):
+    """Proportion of window positions where each channel exceeds each bias."""
+    feats = []
+    for Cx, B in zip(stct_channels(X, **kw), biases):
+        feats.append((Cx[:, None, :, :] > B[None, :, :, None]).mean(axis=3).reshape(len(X), -1))
+    return np.concatenate(feats, axis=1)
+
+
+def rppv_fit(X, n_dir=32, n_biases=5, seed=0, max_fit_samples=512, **kw):
+    """Random polynomial kernels in coefficient space with PPV biases (fit on training data).
+
+    Every window's coefficient vector (standardised per channel) is projected
+    onto ``n_dir`` random unit directions; each direction is a random local
+    polynomial shape, i.e. a random convolution kernel restricted to the
+    Chebyshev subspace, obtained without any extra convolution.  Biases are
+    quantiles of the training projections, as in MiniRocket.
+    """
+    rng = np.random.default_rng(seed)
+    X = np.asarray(X, dtype=float)
+    if len(X) > max_fit_samples:  # biases from a subsample of the training series
+        X = X[rng.choice(len(X), max_fit_samples, replace=False)]
+    qs = np.linspace(0, 1, n_biases + 2)[1:-1]
+    params = []
+    for Cx in stct_channels(X, **kw):
+        n, ch, t = Cx.shape
+        flat = Cx.transpose(1, 0, 2).reshape(ch, -1)
+        mu, sd = flat.mean(axis=1), flat.std(axis=1) + 1e-12
+        D = rng.standard_normal((n_dir, ch))
+        D /= np.linalg.norm(D, axis=1, keepdims=True)
+        P = np.einsum("dc,nct->ndt", D, (Cx - mu[None, :, None]) / sd[None, :, None])
+        B = np.quantile(P.transpose(1, 0, 2).reshape(n_dir, -1), qs, axis=1)  # (n_biases, n_dir)
+        params.append((mu, sd, D, B))
+    return params
+
+
+def stct_rppv(X, params, pyramid=1, block=256, **kw):
+    """PPV at each bias and max, per random polynomial kernel and scale.
+
+    With ``pyramid`` > 1 the PPV and max are also computed over 2, 4, ...
+    segments of the position axis, which adds coarse position information.
+    Series are processed in blocks so memory stays bounded for large test sets.
+    """
+    X = np.asarray(X, dtype=float)
+    out = []
+    for s in range(0, len(X), block):
+        feats = []
+        for Cx, (mu, sd, D, B) in zip(stct_channels(X[s : s + block], **kw), params):
+            P = D @ ((Cx - mu[None, :, None]) / sd[None, :, None])  # (b, n_dir, t), BLAS
+            Bt = B.T[None, :, :, None]
+            t = P.shape[2]
+            segs = [(0, t)]
+            for lvl in range(1, pyramid):
+                edges = np.linspace(0, t, 2**lvl + 1).astype(int)
+                segs += [(a, max(b, a + 1)) for a, b in zip(edges[:-1], edges[1:])]
+            for a, b in segs:
+                Q = P[:, :, a:b]
+                ppv = np.count_nonzero(Q[:, :, None, :] > Bt, axis=3) / (b - a)  # (b, n_dir, n_biases)
+                feats += [ppv.reshape(len(Q), -1), Q.max(axis=2)]
+        out.append(np.concatenate(feats, axis=1))
+    return np.vstack(out)
+
+
 def stct_pooled(
     X,
     fractions=(1 / 32, 1 / 16, 1 / 8, 1 / 4),
@@ -171,6 +268,7 @@ def stct_pooled(
     stats=POOL_STATS,
     min_len=None,
     overlap=8,
+    pyramid=1,
 ):
     """Sliding multi-scale STCT with translation-invariant pooling.
 
@@ -182,17 +280,8 @@ def stct_pooled(
     fully dense stride-1 transform); 8x overlap gives the same pooled
     statistics up to noise at a small fraction of the cost.
     """
-    X = np.asarray(X, dtype=float)
-    n_samples, T = X.shape
-    parts = []
-    for L in _window_lengths(T, fractions, degree, min_len):
-        deg = max(1, min(degree, L - 2))
-        stride = 1 if overlap is None else max(1, L // overlap)
-        Cx = _windowed_coefficients(X, L, deg, stride)
-        if deg < degree:  # pad channels so the layout is stable
-            pad = np.zeros((n_samples, degree - deg, Cx.shape[2]))
-            Cx = np.concatenate([Cx[:, : deg + 1], pad, Cx[:, deg + 1 :]], axis=1)
-        parts.append(_pool(Cx, stats))
+    parts = [_pyramid_pool(Cx, stats, pyramid)
+             for Cx in stct_channels(X, fractions, degree, min_len, overlap)]
     return np.concatenate(parts, axis=1)
 
 
@@ -211,6 +300,7 @@ def stct_plus(
     degree=4,
     stats=POOL_STATS,
     overlap=8,
+    pyramid=1,
 ):
     """STCT+ feature vector: [fixed | pooled] on x, optionally also on diff(x)."""
     X = np.asarray(X, dtype=float)
@@ -222,7 +312,7 @@ def stct_plus(
         if fixed:
             parts.append(stct_fixed(S, window_counts, degree))
         if pooled:
-            parts.append(stct_pooled(S, fractions, degree, stats, overlap=overlap))
+            parts.append(stct_pooled(S, fractions, degree, stats, overlap=overlap, pyramid=pyramid))
     return np.concatenate(parts, axis=1)
 
 

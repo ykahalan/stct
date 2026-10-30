@@ -141,7 +141,45 @@ def feats_multirocket(Xtr, Xte):
     return mr.fit_transform(Xtr[:, None, :]), mr.transform(Xte[:, None, :])
 
 
+def _rppv(n_dir=32, n_biases=5, diff=False, pyramid=1, **kw):
+    """Random polynomial kernel PPV features, fit on train; optional diff channel."""
+
+    def fn(Xtr, Xte):
+        pairs = [(Xtr, Xte)]
+        if diff:
+            pairs.append((np.diff(Xtr, axis=1), np.diff(Xte, axis=1)))
+        ftr, fte = [], []
+        for i, (A, B) in enumerate(pairs):
+            P = SP.rppv_fit(A, n_dir=n_dir, n_biases=n_biases, seed=i, **kw)
+            ftr.append(SP.stct_rppv(A, P, pyramid=pyramid, **kw))
+            fte.append(SP.stct_rppv(B, P, pyramid=pyramid, **kw))
+        return np.hstack(ftr), np.hstack(fte)
+
+    return fn
+
+
 FEATURES = {
+    # round 7: combinations at a 3k-9k feature budget
+    "rppv128_diff": _rppv(128, diff=True),
+    "rppv128_b9": _rppv(128, 9),
+    "rppv256": _rppv(256),
+    "rppv96_diff": _rppv(96, diff=True),
+    "rppv128_p2": _rppv(128, pyramid=2),
+    "rppv64_diff_p2": _rppv(64, diff=True, pyramid=2),
+    # round 6: position pyramid on the PPV features
+    "rppv32_p2": _rppv(32, pyramid=2),
+    "rppv64_p2": _rppv(64, pyramid=2),
+    "rppv32_p3": _rppv(32, pyramid=3),
+    "rppv32_diff_p2": _rppv(32, diff=True, pyramid=2),
+    # round 5: scaling the random-kernel PPV recipe
+    "rppv128": _rppv(128),
+    "rppv32_b9": _rppv(32, 9),
+    "rppv32_s6": _rppv(32, fractions=(1 / 64, 1 / 32, 1 / 16, 1 / 8, 1 / 4, 1 / 2)),
+    "rppv32_d6": _rppv(32, degree=6),
+    "rppv32_o16": _rppv(32, overlap=16),
+    "rppv32_diff": _rppv(32, diff=True),
+    "rppv64_diff": _rppv(64, diff=True),
+    "rppv64_s6_diff": _rppv(64, diff=True, fractions=(1 / 64, 1 / 32, 1 / 16, 1 / 8, 1 / 4, 1 / 2)),
     # paper
     "fixed": _both(lambda X: SP.stct_fixed(X)),
     # ablations
@@ -163,6 +201,29 @@ FEATURES = {
     "plus_all": _both(lambda X: SP.stct_plus(
         X, window_counts=(4, 8, 16, 32), fractions=(1 / 32, 1 / 16, 1 / 8, 1 / 4, 1 / 2),
         stats=SP.POOL_STATS + ("q10", "q90", "absmean", "rough"))),
+    # round 3: position pyramid, PPV at training biases
+    "base": _both(lambda X: SP.stct_plus(X, diff=False)),
+    "pyr2": _both(lambda X: SP.stct_plus(X, diff=False, pyramid=2)),
+    "pyr3": _both(lambda X: SP.stct_plus(X, diff=False, pyramid=3)),
+    "pooledpyr2": _both(lambda X: SP.stct_pooled(X, pyramid=2)),
+    "ppv": lambda Xtr, Xte: (lambda B: (SP.stct_ppv(Xtr, B), SP.stct_ppv(Xte, B)))(SP.ppv_biases(Xtr)),
+    "base+ppv": lambda Xtr, Xte: (lambda B: (
+        np.hstack([SP.stct_plus(Xtr, diff=False), SP.stct_ppv(Xtr, B)]),
+        np.hstack([SP.stct_plus(Xte, diff=False), SP.stct_ppv(Xte, B)])))(SP.ppv_biases(Xtr)),
+    "pyr2+ppv": lambda Xtr, Xte: (lambda B: (
+        np.hstack([SP.stct_plus(Xtr, diff=False, pyramid=2), SP.stct_ppv(Xtr, B)]),
+        np.hstack([SP.stct_plus(Xte, diff=False, pyramid=2), SP.stct_ppv(Xte, B)])))(SP.ppv_biases(Xtr)),
+    # round 4: random polynomial kernels in coefficient space, PPV at training biases + max
+    "rppv32": lambda Xtr, Xte: (lambda P: (SP.stct_rppv(Xtr, P), SP.stct_rppv(Xte, P)))(
+        SP.rppv_fit(Xtr, n_dir=32)),
+    "rppv64": lambda Xtr, Xte: (lambda P: (SP.stct_rppv(Xtr, P), SP.stct_rppv(Xte, P)))(
+        SP.rppv_fit(Xtr, n_dir=64)),
+    "base+rppv32": lambda Xtr, Xte: (lambda P: (
+        np.hstack([SP.stct_plus(Xtr, diff=False), SP.stct_rppv(Xtr, P)]),
+        np.hstack([SP.stct_plus(Xte, diff=False), SP.stct_rppv(Xte, P)])))(SP.rppv_fit(Xtr, n_dir=32)),
+    "base+rppv64": lambda Xtr, Xte: (lambda P: (
+        np.hstack([SP.stct_plus(Xtr, diff=False), SP.stct_rppv(Xtr, P)]),
+        np.hstack([SP.stct_plus(Xte, diff=False), SP.stct_rppv(Xte, P)])))(SP.rppv_fit(Xtr, n_dir=64)),
     # references
     "raw": _both(lambda X: X),
     "minirocket": feats_minirocket,
@@ -173,6 +234,32 @@ FEATURES = {
 # --------------------------------------------------------------------------
 # learners
 # --------------------------------------------------------------------------
+
+
+class RandomRotation:
+    """Append a fixed random orthonormal rotation of the features (oblique splits for trees)."""
+
+    def __init__(self, seed=0):
+        self.seed = seed
+
+    def fit(self, X, y=None):
+        d = X.shape[1]
+        G = np.random.default_rng(self.seed).standard_normal((d, d))
+        self.R_, _ = np.linalg.qr(G)
+        return self
+
+    def transform(self, X):
+        return np.hstack([X, X @ self.R_])
+
+    def fit_transform(self, X, y=None):
+        return self.fit(X, y).transform(X)
+
+    def get_params(self, deep=True):
+        return {"seed": self.seed}
+
+    def set_params(self, **p):
+        self.seed = p.get("seed", self.seed)
+        return self
 
 
 def make_learner(name, task):
@@ -202,6 +289,22 @@ def make_learner(name, task):
     if name == "ridge":
         alphas = np.logspace(-3, 3, 10)
         est = RidgeClassifierCV(alphas=alphas) if cls else RidgeCV(alphas=alphas)
+        return make_pipeline(StandardScaler(), est)
+    if name == "etrot":  # ExtraTrees on [F, F R] with a fixed random rotation R
+        est = (ExtraTreesClassifier if cls else ExtraTreesRegressor)(
+            n_estimators=500, random_state=RNG, n_jobs=-1)
+        return make_pipeline(StandardScaler(), RandomRotation(RNG), est)
+    if name == "vote":  # soft vote of ExtraTrees-500 and RandomForest-300
+        from sklearn.ensemble import VotingClassifier, VotingRegressor
+
+        et = (ExtraTreesClassifier if cls else ExtraTreesRegressor)(
+            n_estimators=500, random_state=RNG, n_jobs=-1)
+        rf = (RandomForestClassifier if cls else RandomForestRegressor)(
+            n_estimators=300, random_state=RNG, n_jobs=-1)
+        if cls:
+            est = VotingClassifier([("et", et), ("rf", rf)], voting="soft")
+        else:
+            est = VotingRegressor([("et", et), ("rf", rf)])
         return make_pipeline(StandardScaler(), est)
     if name == "rotf":
         if cls:

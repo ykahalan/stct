@@ -8,8 +8,16 @@ import bench
 SLOW = ("rotf", "hgb")
 
 
+def load_all(task):
+    """All dev rounds for a task (results/dev*_<task>.csv)."""
+    import glob
+
+    paths = sorted(glob.glob(f"results/dev*_{task}.csv"))
+    return pd.concat([bench.read_results(p, task) for p in paths], ignore_index=True)
+
+
 def block(task, path, methods=None, title=""):
-    df = bench.read_results(path, task)
+    df = load_all(task) if path is None else bench.read_results(path, task)
     if methods is not None:
         df = df[df.method.isin(methods)]
     key = "accuracy" if task == "classification" else "rmse"
@@ -35,13 +43,14 @@ lines = ["# Dev-set ablations", "",
          "Configuration was chosen on these subsets only (38 small UCR datasets, 16 TSER datasets); "
          "the full-archive numbers in summary_*.md are reported on the complete archives.",
          "Times are seconds per dataset on a shared, loaded machine: compare ratios, not absolutes.", ""]
-for task, path in [("classification", "results/dev_classification.csv"),
-                   ("regression", "results/dev_regression.csv")]:
-    df = bench.read_results(path, task)
+for task in ["classification", "regression"]:
+    df = load_all(task)
     fast = sorted(m for m in df.method.unique() if not any(s in m for s in SLOW))
+    ridge = sorted(m for m in fast if m.startswith("rppv") or m == "minirocket:ridge")
     lines += [f"## {task}", ""]
-    lines += block(task, path, fast, "Fast learners (RF / ExtraTrees / ridge), every feature set")
-    lines += block(task, path, None, "Including the slow learners (RotationForest, HistGB) on the "
+    lines += block(task, None, ridge, "Random polynomial kernel PPV recipes (rounds 4-7)")
+    lines += block(task, None, fast, "Fast learners (RF / ExtraTrees / ridge), every feature set")
+    lines += block(task, None, None, "Including the slow learners (RotationForest, HistGB) on the "
                                      "datasets they finished before being dropped")
 with open("results/dev_ablations.md", "w", encoding="utf-8") as f:
     f.write("\n".join(lines))
