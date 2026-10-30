@@ -31,6 +31,11 @@ def _cheby_design(win_len, deg):
     return Phi, np.linalg.pinv(Phi)
 
 
+def _scale_degree(win_len):
+    """Fit degree that grows with window length: floor(log2(length)) - 2, limited to 2..8."""
+    return int(np.clip(int(np.log2(max(win_len, 1))) - 2, 2, 8))
+
+
 # --------------------------------------------------------------------------
 # Original STCT (verbatim logic from the paper notebooks)
 # --------------------------------------------------------------------------
@@ -82,30 +87,32 @@ def stct_fixed(X, window_counts=(8, 16), degree=4, include_residual=True):
 # --------------------------------------------------------------------------
 
 
-def stct_ladder(X, counts=LADDER_COUNTS, degree=4, orthonormal=False):
+def stct_ladder(X, counts=LADDER_COUNTS, degree=4, orthonormal=False, adaptive_degree=False):
     """Fit coefficients and residual RMS in every tiling window of every count.
 
     Counts whose windows would be shorter than degree + 2 samples are skipped.
     ``orthonormal`` reports coefficients in an orthonormal basis of the same
     polynomial space, which decorrelates them; the residual is unchanged.
+    ``adaptive_degree`` replaces ``degree`` with :func:`_scale_degree` at each count.
     """
     X = np.asarray(X, dtype=float)
     n_samples, n = X.shape
     designs = {}
     feats = []
     for nw in counts:
-        if n // nw < degree + 2:
+        deg = _scale_degree(n // nw) if adaptive_degree else degree
+        if n // nw < deg + 2:
             continue
         edges = np.round(np.linspace(0, n, nw + 1)).astype(int)
         for a, b in zip(edges[:-1], edges[1:]):
             L = b - a
-            if L not in designs:
-                Phi, pinv = _cheby_design(L, degree)
+            if (L, deg) not in designs:
+                Phi, pinv = _cheby_design(L, deg)
                 if orthonormal:
                     Q, _ = np.linalg.qr(Phi)
                     Phi, pinv = Q, Q.T
-                designs[L] = (Phi, pinv)
-            Phi, pinv = designs[L]
+                designs[(L, deg)] = (Phi, pinv)
+            Phi, pinv = designs[(L, deg)]
             W = X[:, a:b]
             c = W @ pinv.T
             res = W - c @ Phi.T
@@ -211,24 +218,28 @@ def _second_order(Cx, degree=2):
 
 
 def stct_pooled(X, fractions=POOL_FRACTIONS, degree=4, stats=POOL_STATS, overlap=8, orthonormal=False,
-                shape=False, energy=False, cross=False, second=False):
+                shape=False, energy=False, cross=False, second=False, adaptive_degree=False, sample_windows=()):
     """Sliding STCT at window lengths given as fractions of the series length.
 
     Windows slide with stride window // overlap, and each channel time course
     is summarised by ``stats``.  The proportion of positive residuals is dropped
     because a residual RMS is never negative.  The remaining flags are the
     optional algorithmic additions described on their helper functions.
+    ``sample_windows`` adds window lengths given in samples, independent of series
+    length.  ``adaptive_degree`` sets each window's degree with :func:`_scale_degree`.
     """
     X = np.asarray(X, dtype=float)
     T = X.shape[1]
+    shortest = 4 if adaptive_degree else degree + 2
     lengths = []
-    for f in fractions:
-        L = max(degree + 2, min(int(round(T * f)), T))
+    for L in [int(round(T * f)) for f in fractions] + list(sample_windows):
+        L = max(shortest, min(L, T))
         if L not in lengths:
             lengths.append(L)
     parts = []
     for L in lengths:
-        Cx = _windowed_coefficients(X, L, degree, max(1, L // overlap), orthonormal=orthonormal)
+        deg = _scale_degree(L) if adaptive_degree else degree
+        Cx = _windowed_coefficients(X, L, deg, max(1, L // overlap), orthonormal=orthonormal)
         pooled = _pool(_shape_normalise(Cx) if shape else Cx, stats)
         if "ppv" in stats:
             ch = Cx.shape[1]
@@ -292,15 +303,17 @@ def level_quantiles(X, counts=PRIMES[1:7], degree=4, orthonormal=False):
 
 def stct_plus(X, counts=LADDER_COUNTS, degree=4, fractions=POOL_FRACTIONS, stats=POOL_STATS, overlap=8,
               orthonormal=False, shape=False, energy=False, cross=False, second=False, spectrum=False,
-              spectrum_counts=PRIMES[:4], global_q=False, window_q=False, level_q=False):
+              spectrum_counts=PRIMES[:4], global_q=False, window_q=False, level_q=False,
+              adaptive_degree=False, sample_windows=()):
     """Prime ladder + pooled statistics, plus any optional candidate blocks.
 
     ``spectrum`` applies the same fit to frequency bands instead of time windows.
     ``global_q``, ``window_q`` and ``level_q`` add the quantile blocks above.
     """
     X = np.asarray(X, dtype=float)
-    parts = [stct_ladder(X, counts, degree, orthonormal),
-             stct_pooled(X, fractions, degree, stats, overlap, orthonormal, shape, energy, cross, second)]
+    parts = [stct_ladder(X, counts, degree, orthonormal, adaptive_degree),
+             stct_pooled(X, fractions, degree, stats, overlap, orthonormal, shape, energy, cross, second,
+                         adaptive_degree, sample_windows)]
     if spectrum:
         parts.append(stct_ladder(log_periodogram(X), spectrum_counts, degree, orthonormal))
     if global_q:
@@ -371,6 +384,19 @@ if __name__ == "__main__":
     for T in (15, 24, 84):
         S = rng.standard_normal((4, T)).cumsum(axis=1)
         assert np.isfinite(stct_plus(S, orthonormal=True, global_q=True, window_q=True, level_q=True)).all(), T
+    # degree follows window length; defaults must be unaffected by the new options
+    assert [_scale_degree(L) for L in (4, 6, 8, 64, 256, 1024, 100000)] == [2, 2, 2, 4, 6, 8, 8]
+    assert np.allclose(stct_pooled(X, sample_windows=()), stct_pooled(X))
+    assert np.allclose(stct_pooled(X, fractions=(), sample_windows=(25,)),
+                       stct_pooled(X, fractions=(25 / 200,)))
+    for T in (15, 24, 84, 601, 2000):
+        S = rng.standard_normal((4, T)).cumsum(axis=1)
+        for kw in (dict(adaptive_degree=True), dict(fractions=(1 / 8, 1 / 4), sample_windows=(8, 32)),
+                   dict(sample_windows=(16,)), dict(adaptive_degree=True, sample_windows=(16,))):
+            F = stct_plus(S, orthonormal=True, **kw)
+            assert np.isfinite(F).all(), (T, kw)
+            if T == 2000:
+                print(kw, F.shape[1])
     # a pure tone must put its largest periodogram value at its own frequency
     tone = np.sin(2 * np.pi * 10 * np.arange(200) / 200)[None]
     assert log_periodogram(tone).argmax() == 9

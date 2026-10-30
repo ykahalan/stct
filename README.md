@@ -40,6 +40,9 @@ STCT+ combines two closed-form, training-free blocks with a 500-tree ExtraTrees.
 | Global deciles of series and residual (on top of orthonormal) | -0.0029 | 35 / 40 | 0.974 | No (hurt classification) |
 | Quartiles of raw values per ladder window (on top of orthonormal) | -0.0032 | 34 / 50 | 0.983 | No |
 | Quartiles of coefficients per ladder level (on top of orthonormal) | -0.0039 | 31 / 42 | 0.999 | No |
+| Degree that grows with window length (on top of orthonormal) | -0.0058 | 28 / 50 | 0.994 | No |
+| Replace 1/32 and 1/16 scales with 8 and 32 samples (on top of orthonormal) | +0.0025 | 39 / 38 | 1.024 | No (hurt regression, no clear majority) |
+| Add a 16-sample scale (on top of orthonormal) | -0.0004 | 31 / 34 | 1.005 | No |
 
 Nothing else passed once orthonormal coefficients were in place, so the rejected candidates were never scored on test splits. On the test splits, the adopted change is not significantly better than the version before it (0.8458 to 0.8462 mean accuracy, 47 better / 39 worse, p = 0.33).
 
@@ -150,6 +153,7 @@ Reproduce the results above:
 python algo_select.py
 python algo_select.py --base orthonormal --candidates spectrum --prefix results/algo_spectrum
 python algo_select.py --base orthonormal --candidates global_q,window_q,level_q --prefix results/algo_quantile
+python algo_select.py --base orthonormal --candidates adaptive_degree,fixed_swap,fixed_add --prefix results/algo_scale
 python bench.py --task classification --datasets all --methods fixed:rf,fixed:et,wavelet:rf,wavelet:et,stft:rf,stft:et,msP7+pooled:et,stct_plus:et,minirocket:ridge --out results/full_classification.csv
 python bench.py --task regression --datasets all --methods fixed:rf,fixed:et,wavelet:rf,wavelet:et,stft:rf,stft:et,msP7+pooled:et,stct_plus:et,minirocket:ridge --out results/full_regression.csv
 python heldout.py

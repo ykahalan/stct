@@ -33,6 +33,19 @@ import stct_plus as SP
 warnings.filterwarnings("ignore")
 MAX_FEATURES = 600
 CANDIDATES = ("orthonormal", "shape", "energy", "cross", "second")
+# candidates that are not a single boolean option of stct_plus
+NAMED = {"fixed_swap": dict(fractions=(1 / 8, 1 / 4), sample_windows=(8, 32)),
+         "fixed_add": dict(sample_windows=(16,))}
+CONFLICTS = {"fixed_swap": "fixed_add", "fixed_add": "fixed_swap"}
+
+
+def expand(flags):
+    """Turn candidate names into stct_plus keyword arguments."""
+    kw = {}
+    for name, on in flags.items():
+        if on:
+            kw.update(NAMED.get(name, {name: True}))
+    return kw
 
 
 def load_train(task, name):
@@ -47,7 +60,7 @@ def load_train(task, name):
 
 
 def cv_score(task, X, y, flags):
-    F = np.nan_to_num(SP.stct_plus(X, **flags))
+    F = np.nan_to_num(SP.stct_plus(X, **expand(flags)))
     if task == "classification":
         est = ExtraTreesClassifier(n_estimators=200, random_state=bench.RNG, n_jobs=-1)
         counts = np.unique(y, return_counts=True)[1]
@@ -59,7 +72,7 @@ def cv_score(task, X, y, flags):
 
 
 def n_features(flags):
-    return SP.stct_plus(np.random.default_rng(0).standard_normal((2, 1024)), **flags).shape[1]
+    return SP.stct_plus(np.random.default_rng(0).standard_normal((2, 1024)), **expand(flags)).shape[1]
 
 
 def main():
@@ -114,7 +127,7 @@ def main():
         step += 1
         trials = []
         for cand in candidates:
-            if cand in chosen:
+            if cand in chosen or CONFLICTS.get(cand) in chosen:
                 continue
             flags = dict(chosen, **{cand: True})
             feats = n_features(flags)
