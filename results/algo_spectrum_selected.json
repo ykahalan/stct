@@ -1,0 +1,9 @@
+{
+  "chosen": [
+    "orthonormal"
+  ],
+  "features": 488,
+  "train_cv_accuracy": 0.8411258424774225,
+  "classification_datasets": 117,
+  "regression_datasets": 26
+}

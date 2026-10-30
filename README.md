@@ -36,14 +36,18 @@ STCT+ combines two closed-form, training-free blocks with a 500-tree ExtraTrees.
 | Shape normalisation | +0.0015 | 36 / 44 | 1.042 | No |
 | Energy per polynomial degree | -0.0011 | 41 / 38 | 0.996 | No |
 | Second-order STCT | -0.0009 | 36 / 45 | 1.000 | No |
+| Ladder over the log periodogram (on top of orthonormal) | -0.0019 | 39 / 40 | 1.005 | No |
+| Global deciles of series and residual (on top of orthonormal) | -0.0029 | 35 / 40 | 0.974 | No (hurt classification) |
+| Quartiles of raw values per ladder window (on top of orthonormal) | -0.0032 | 34 / 50 | 0.983 | No |
+| Quartiles of coefficients per ladder level (on top of orthonormal) | -0.0039 | 31 / 42 | 0.999 | No |
 
-Nothing else passed once orthonormal coefficients were in place. On the test splits, the adopted change is not significantly better than the version before it (0.8458 to 0.8462 mean accuracy, 47 better / 39 worse, p = 0.33).
+Nothing else passed once orthonormal coefficients were in place, so the rejected candidates were never scored on test splits. On the test splits, the adopted change is not significantly better than the version before it (0.8458 to 0.8462 mean accuracy, 47 better / 39 worse, p = 0.33).
 
 **Limit of this protocol:** the ladder + pooled structure itself was chosen earlier, after seeing test scores on 38 UCR and 16 TSER datasets. The tables therefore also report the remaining datasets (`results/heldout_<task>.md`).
 
 ### Results
 
-All results use the default train/test splits and one seed. Reference numbers are the published results from timeseriesclassification.com for the same splits; STCT variants and MiniRocket were run here. Times are mean seconds per dataset for extraction + fit + predict on one shared 20-thread machine that was also running other jobs, so ratios are more reliable than absolutes.
+All results use the default train/test splits and one seed. Reference numbers are the published results from timeseriesclassification.com for the same splits; STCT variants and MiniRocket were run here. Times are mean seconds per dataset for extraction + fit + predict on one shared 20-thread machine that was also running other jobs, so ratios are more reliable than absolutes. These times use all threads; see the single-thread table below.
 
 **Classification** (mean accuracy on the 112 UCR datasets common to all methods, and on 74 of those outside the earlier 38):
 
@@ -90,11 +94,28 @@ STCT+ is statistically tied with DrCIF, the strongest published regressor here, 
 
 The random forest columns reproduce the paper's table. Under ExtraTrees, STCT beats wavelet 89 / 16 and STFT 75 / 31 on classification, and 19 / 7 and 20 / 6 on regression (p < 0.02 for all four).
 
+### Single-thread timing
+
+Published baseline times come from other hardware, so `single_thread.py` ran STCT+ and two references on one thread on this machine, including extraction, fit and predict. The machine was also running other jobs.
+
+| Method | Task | Mean score | Features | Mean (s) | Median (s) | Max (s) |
+|---|---|---|---|---|---|---|
+| **STCT+ (500 trees)** | Classification, 116 UCR | 0.846 | 463 | 3.1 | 1.4 | 39 |
+| QUANT, aeon (200 trees) | Classification, 116 UCR | 0.853 | 4909 | 12.2 | 2.5 | 155 |
+| MiniRocket + ridge | Classification, 116 UCR | 0.860 | 9996 | 8.2 | 0.9 | 404 |
+| STCT paper features (500 trees) | Classification, 116 UCR | 0.799 | 138 | 1.5 | 0.8 | 22 |
+| **STCT+ (500 trees)** | Regression, 26 TSER | RMSE 112.9 | 441 | 35.4 | 24.0 | 122 |
+| MiniRocket + ridge | Regression, 26 TSER | RMSE 124.1 | 9996 | 5.0 | 3.3 | 19 |
+| STCT paper features (500 trees) | Regression, 26 TSER | RMSE 114.4 | 134 | 11.3 | 7.7 | 39 |
+
+STCT+ is faster than this QUANT run on 97 of 116 classification datasets, but slower than MiniRocket on most of them and on all 26 regression datasets. The published QUANT totals are lower than this aeon run (9.6 minutes against 23.6 on 112 datasets, on different hardware), so the QUANT comparison depends on the implementation. MiniRocket shows the opposite gap (128.8 against 15.7 minutes), so these runs do not give a single hardware correction. On regression, published mean fit times are about 17,209 s for DrCIF and 3,340 s for FreshPRINCE, far above STCT+ despite the hardware difference.
+
 ## Contents
 
 - `stct_classification.ipynb`, `stct_regression.ipynb`: the paper's UCR / TSER benchmarks (wavelet, STFT, STCT, Rocket)
 - `stct_plus.py`: STCT (`stct_fixed`, verbatim from the notebooks) and STCT+ (`stct_ladder`, `stct_pooled`, `stct_plus`, sklearn-style `STCTPlus`)
 - `algo_select.py`: chooses algorithm changes using training splits only
+- `single_thread.py`: times STCT+, MiniRocket and QUANT on one thread
 - `bench.py`: resumable benchmark harness, `<features>:<learner>` methods, UCR and TSER lists
 - `compare.py`: merges a benchmark CSV with the published reference results and writes `results/summary_<task>.md`
 - `heldout.py`: ranks one recipe at a time against the published methods, on all datasets and excluding the earlier ones
@@ -127,9 +148,12 @@ Reproduce the results above:
 
 ```bash
 python algo_select.py
+python algo_select.py --base orthonormal --candidates spectrum --prefix results/algo_spectrum
+python algo_select.py --base orthonormal --candidates global_q,window_q,level_q --prefix results/algo_quantile
 python bench.py --task classification --datasets all --methods fixed:rf,fixed:et,wavelet:rf,wavelet:et,stft:rf,stft:et,msP7+pooled:et,stct_plus:et,minirocket:ridge --out results/full_classification.csv
 python bench.py --task regression --datasets all --methods fixed:rf,fixed:et,wavelet:rf,wavelet:et,stft:rf,stft:et,msP7+pooled:et,stct_plus:et,minirocket:ridge --out results/full_regression.csv
 python heldout.py
+python single_thread.py
 ```
 
 Default STCT setting: degree 4, two scales (8 and 16 windows).

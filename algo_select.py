@@ -67,7 +67,10 @@ def main():
     ap.add_argument("--classification", default=None, help="comma-separated override, smoke tests only")
     ap.add_argument("--regression", default=None, help="comma-separated override, smoke tests only")
     ap.add_argument("--prefix", default="results/algo")
+    ap.add_argument("--base", default="", help="comma-separated changes already adopted")
+    ap.add_argument("--candidates", default=",".join(CANDIDATES))
     a = ap.parse_args()
+    candidates = a.candidates.split(",")
     names = {"classification": a.classification.split(",") if a.classification else bench.UCR,
              "regression": a.regression.split(",") if a.regression else bench.TSER}
     data = {}
@@ -104,13 +107,13 @@ def main():
         reg_win = c["rmse_ratio"] <= 0.995 and c["rmse_better"] > c["rmse_worse"] and c["acc_gain"] >= -0.0005
         return cls_win or reg_win
 
-    chosen = {}
+    chosen = {b: True for b in a.base.split(",") if b}
     base = score(chosen)
     step = 0
     while True:
         step += 1
         trials = []
-        for cand in CANDIDATES:
+        for cand in candidates:
             if cand in chosen:
                 continue
             flags = dict(chosen, **{cand: True})

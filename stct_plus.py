@@ -248,12 +248,68 @@ def stct_pooled(X, fractions=POOL_FRACTIONS, degree=4, stats=POOL_STATS, overlap
 # --------------------------------------------------------------------------
 
 
-def stct_plus(X, counts=LADDER_COUNTS, degree=4, fractions=POOL_FRACTIONS, stats=POOL_STATS, overlap=8,
-              orthonormal=False, shape=False, energy=False, cross=False, second=False):
-    """Prime ladder + pooled statistics."""
+def log_periodogram(X):
+    """Log power at each non-zero frequency of the mean-removed series."""
     X = np.asarray(X, dtype=float)
-    return np.hstack([stct_ladder(X, counts, degree, orthonormal),
-                      stct_pooled(X, fractions, degree, stats, overlap, orthonormal, shape, energy, cross, second)])
+    X = X - X.mean(axis=1, keepdims=True)
+    return np.log(np.abs(np.fft.rfft(X, axis=1))[:, 1:] ** 2 + 1e-8)
+
+
+def global_quantiles(X, degree=4):
+    """Deciles of the whole series and of its residual after a whole-series fit."""
+    X = np.asarray(X, dtype=float)
+    Phi, pinv = _cheby_design(X.shape[1], degree)
+    res = X - (X @ pinv.T) @ Phi.T
+    qs = np.arange(1, 10) / 10
+    return np.hstack([np.quantile(X, qs, axis=1).T, np.quantile(res, qs, axis=1).T])
+
+
+def window_quantiles(X, counts=PRIMES[:5]):
+    """Quartiles of the raw values inside every tiling window of every count."""
+    X = np.asarray(X, dtype=float)
+    n = X.shape[1]
+    feats = []
+    for nw in counts:
+        if n // nw < 4:
+            continue
+        edges = np.round(np.linspace(0, n, nw + 1)).astype(int)
+        for a, b in zip(edges[:-1], edges[1:]):
+            feats.append(np.quantile(X[:, a:b], (0.25, 0.5, 0.75), axis=1).T)
+    return np.hstack(feats)
+
+
+def level_quantiles(X, counts=PRIMES[1:7], degree=4, orthonormal=False):
+    """Quartiles of each coefficient channel across the tiling windows of each ladder level."""
+    X = np.asarray(X, dtype=float)
+    ch = degree + 2
+    parts = []
+    for nw in counts:
+        F = stct_ladder(X, (nw,), degree, orthonormal)
+        if F.shape[1]:
+            parts.append(_pool(F.reshape(len(X), -1, ch).transpose(0, 2, 1), ("q25", "q50", "q75")))
+    return np.hstack(parts) if parts else np.zeros((len(X), 0))
+
+
+def stct_plus(X, counts=LADDER_COUNTS, degree=4, fractions=POOL_FRACTIONS, stats=POOL_STATS, overlap=8,
+              orthonormal=False, shape=False, energy=False, cross=False, second=False, spectrum=False,
+              spectrum_counts=PRIMES[:4], global_q=False, window_q=False, level_q=False):
+    """Prime ladder + pooled statistics, plus any optional candidate blocks.
+
+    ``spectrum`` applies the same fit to frequency bands instead of time windows.
+    ``global_q``, ``window_q`` and ``level_q`` add the quantile blocks above.
+    """
+    X = np.asarray(X, dtype=float)
+    parts = [stct_ladder(X, counts, degree, orthonormal),
+             stct_pooled(X, fractions, degree, stats, overlap, orthonormal, shape, energy, cross, second)]
+    if spectrum:
+        parts.append(stct_ladder(log_periodogram(X), spectrum_counts, degree, orthonormal))
+    if global_q:
+        parts.append(global_quantiles(X, degree))
+    if window_q:
+        parts.append(window_quantiles(X))
+    if level_q:
+        parts.append(level_quantiles(X, degree=degree, orthonormal=orthonormal))
+    return np.hstack(parts)
 
 
 class STCTPlus:
@@ -304,7 +360,19 @@ if __name__ == "__main__":
     assert np.abs(_shape_normalise(Cx)[:, 1 : d + 1]).max() <= 1 + 1e-9
     for T in (15, 24, 84, 96, 601, 1460):
         F = stct_plus(rng.standard_normal((4, T)).cumsum(axis=1), orthonormal=True, shape=True, energy=True,
-                      cross=True, second=True)
+                      cross=True, second=True, spectrum=True)
         assert np.isfinite(F).all(), T
         print(T, F.shape)
+    # quantile blocks: a level's median must match the median of its raw ladder coefficients
+    lvl = stct_ladder(X, (5,)).reshape(3, 5, 6)
+    assert np.allclose(level_quantiles(X, (5,))[:, 6:12], np.median(lvl, axis=1))
+    assert np.allclose(global_quantiles(X)[:, 4], np.median(X, axis=1))
+    assert window_quantiles(X).shape[1] == 54 and global_quantiles(X).shape[1] == 18
+    for T in (15, 24, 84):
+        S = rng.standard_normal((4, T)).cumsum(axis=1)
+        assert np.isfinite(stct_plus(S, orthonormal=True, global_q=True, window_q=True, level_q=True)).all(), T
+    # a pure tone must put its largest periodogram value at its own frequency
+    tone = np.sin(2 * np.pi * 10 * np.arange(200) / 200)[None]
+    assert log_periodogram(tone).argmax() == 9
+    assert stct_plus(np.ones((2, 200)), spectrum=True).shape[1] == stct_plus(X, spectrum=True).shape[1]
     print("stct_plus OK")

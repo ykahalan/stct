@@ -1,0 +1,2 @@
+acc_gain,acc_better,acc_worse,rmse_ratio,rmse_better,rmse_worse,step,candidate,features,passes
+-0.0019077570730990337,39,40,1.0050723680388771,9,17,1,spectrum,554,False
