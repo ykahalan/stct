@@ -1,30 +1,34 @@
-"""STCT+ : the Short-Time Chebyshev Transform and a minimal expansion of it.
+"""STCT+ : the Short-Time Chebyshev Transform with a prime ladder and pooled statistics.
 
-Two feature families, both closed-form and training-free:
+Both blocks are closed-form and training-free, and their size does not depend
+on series length.
 
-* ``fixed``  -- the original STCT exactly as in the paper notebooks: each of
-  ``n_windows`` windows at fixed positions is summarised by the coefficients of
-  a degree-``degree`` Chebyshev least-squares fit plus the RMS fit residual.
-  Feature count = sum(window_counts) * (degree + 2).
+* ``stct_ladder`` -- each series is cut into 1, 2, 3, 5, 7, 11 and 13 tiling
+  windows, and every window is described by the coefficients of a low-degree
+  Chebyshev least-squares fit plus the RMS fit residual.
 
-* ``pooled`` -- the *dense* STCT.  The same Chebyshev fit is evaluated at every
-  position (stride 1) for several window lengths, which turns the transform
-  into a bank of ``degree + 1`` orthogonal-polynomial convolution kernels per
-  scale plus a residual channel.  Each channel's time course is then collapsed
-  with translation-invariant statistics (quantiles, extrema and their
-  positions, proportion of positive values).  This addresses STCT's main
-  weakness (features tied to absolute window positions, so a time shift of a
-  pattern changes every feature) at a feature count that still does not
-  depend on series length.
+* ``stct_pooled`` -- the same fit is slid along the series at several window
+  lengths, and each coefficient channel's time course is collapsed into
+  shift-invariant statistics.
 
-Optionally both families are also computed on the first difference of the
-series (``diff=True``), which exposes local slope structure that the raw
-series hides; MultiRocket does the same.
+``stct_plus`` concatenates the two.  ``stct_fixed`` is the paper's original
+representation, kept as the baseline.
 """
 from __future__ import annotations
 
 import numpy as np
 from numpy.polynomial import chebyshev as C
+
+PRIMES = (1, 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31)
+LADDER_COUNTS = PRIMES[:7]
+POOL_FRACTIONS = (1 / 32, 1 / 16, 1 / 8, 1 / 4)
+POOL_STATS = ("mean", "std", "min", "max", "q25", "q50", "q75", "ppv", "argmax", "argmin")
+
+
+def _cheby_design(win_len, deg):
+    x = np.linspace(-1, 1, win_len)
+    Phi = C.chebvander(x, deg)
+    return Phi, np.linalg.pinv(Phi)
 
 
 # --------------------------------------------------------------------------
@@ -40,12 +44,6 @@ def _safe_cheby_params(n, n_windows=8, degree=4):
         n_windows = 1
         degree = max(1, n - 2)
     return n_windows, degree
-
-
-def _cheby_design(win_len, deg):
-    x = np.linspace(-1, 1, win_len)
-    Phi = C.chebvander(x, deg)
-    return Phi, np.linalg.pinv(Phi)
 
 
 def _stct_single_scale(X, n_windows, degree, include_residual=True):
@@ -80,28 +78,62 @@ def stct_fixed(X, window_counts=(8, 16), degree=4, include_residual=True):
 
 
 # --------------------------------------------------------------------------
-# Dense STCT + translation-invariant pooling
+# Prime ladder: tiling windows at several window counts
 # --------------------------------------------------------------------------
 
-POOL_STATS = ("mean", "std", "min", "max", "q25", "q50", "q75", "ppv", "argmax", "argmin")
+
+def stct_ladder(X, counts=LADDER_COUNTS, degree=4, orthonormal=False):
+    """Fit coefficients and residual RMS in every tiling window of every count.
+
+    Counts whose windows would be shorter than degree + 2 samples are skipped.
+    ``orthonormal`` reports coefficients in an orthonormal basis of the same
+    polynomial space, which decorrelates them; the residual is unchanged.
+    """
+    X = np.asarray(X, dtype=float)
+    n_samples, n = X.shape
+    designs = {}
+    feats = []
+    for nw in counts:
+        if n // nw < degree + 2:
+            continue
+        edges = np.round(np.linspace(0, n, nw + 1)).astype(int)
+        for a, b in zip(edges[:-1], edges[1:]):
+            L = b - a
+            if L not in designs:
+                Phi, pinv = _cheby_design(L, degree)
+                if orthonormal:
+                    Q, _ = np.linalg.qr(Phi)
+                    Phi, pinv = Q, Q.T
+                designs[L] = (Phi, pinv)
+            Phi, pinv = designs[L]
+            W = X[:, a:b]
+            c = W @ pinv.T
+            res = W - c @ Phi.T
+            feats += [c, np.sqrt((res**2).mean(axis=1, keepdims=True))]
+    if not feats:
+        return np.zeros((n_samples, 0))
+    return np.concatenate(feats, axis=1)
 
 
-def _windowed_coefficients(X, win_len, degree, stride=1, max_block_elems=1_000_000):
-    """Chebyshev LS coefficients and residual RMS for windows starting every ``stride``.
+# --------------------------------------------------------------------------
+# Pooled block: sliding fit + shift-invariant statistics
+# --------------------------------------------------------------------------
 
-    Returns an array of shape (n_samples, degree + 2, n_windows).  ``stride=1``
-    is the fully dense transform.  Each block of series is gathered into
-    (b, n_windows, L) and projected onto an orthonormal basis Q of the
-    Chebyshev space in one matmul; the Chebyshev coefficients are a fixed
-    linear map of that projection and the residual energy is
-    ||w||^2 - ||Q^T w||^2, so no window is ever reconstructed.
+
+def _windowed_coefficients(X, win_len, degree, stride=1, max_block_elems=1_000_000, orthonormal=False):
+    """Coefficients and residual RMS for windows starting every ``stride`` samples.
+
+    Returns (n_samples, degree + 2, n_windows).  Each block is projected onto an
+    orthonormal basis Q of the Chebyshev space in one matmul; the Chebyshev
+    coefficients are a fixed linear map of that projection and the residual
+    energy is ||w||^2 - ||Q^T w||^2, so no window is ever reconstructed.
     """
     X = np.asarray(X, dtype=float)
     n_samples, T = X.shape
     L = win_len
-    Phi = C.chebvander(np.linspace(-1, 1, L), degree)  # (L, d+1)
-    Q, R = np.linalg.qr(Phi)  # Phi = Q R, Q orthonormal
-    RinvT = np.linalg.inv(R).T  # coefs = (Q^T w) R^{-1}
+    Phi = C.chebvander(np.linspace(-1, 1, L), degree)
+    Q, R = np.linalg.qr(Phi)
+    RinvT = np.linalg.inv(R).T
     starts = np.arange(0, T - L + 1, stride)
     if starts[-1] != T - L:  # always cover the end of the series
         starts = np.append(starts, T - L)
@@ -110,9 +142,9 @@ def _windowed_coefficients(X, win_len, degree, stride=1, max_block_elems=1_000_0
     out = np.empty((n_samples, degree + 2, nw))
     block = max(1, max_block_elems // (nw * L))
     for s in range(0, n_samples, block):
-        W = X[s : s + block][:, idx]  # (b, nw, L)
-        proj = W @ Q  # (b, nw, d+1)
-        coefs = proj @ RinvT
+        W = X[s : s + block][:, idx]
+        proj = W @ Q
+        coefs = proj if orthonormal else proj @ RinvT
         energy = (W * W).sum(axis=-1) - (proj * proj).sum(axis=-1)
         out[s : s + block, : degree + 1] = coefs.transpose(0, 2, 1)
         out[s : s + block, degree + 1] = np.sqrt(np.maximum(energy, 0.0) / L)
@@ -120,13 +152,12 @@ def _windowed_coefficients(X, win_len, degree, stride=1, max_block_elems=1_000_0
 
 
 def _pool(Cx, stats):
-    """Collapse (n, ch, t) -> (n, ch * len(stats)) with translation-invariant stats."""
-    n, ch, t = Cx.shape
+    """Collapse (n, ch, t) to (n, ch * len(stats)) with shift-invariant statistics."""
+    t = Cx.shape[2]
+    quantiles = [s for s in stats if s.startswith("q")]
+    if quantiles:
+        Qv = np.quantile(Cx, [int(s[1:]) / 100 for s in quantiles], axis=2)
     feats = []
-    need_q = [s for s in stats if s.startswith("q")]
-    if need_q:
-        qs = [int(s[1:]) / 100 for s in need_q]
-        Qv = np.quantile(Cx, qs, axis=2)  # (nq, n, ch)
     for s in stats:
         if s == "mean":
             feats.append(Cx.mean(axis=2))
@@ -142,293 +173,87 @@ def _pool(Cx, stats):
             feats.append(Cx.argmax(axis=2) / max(t - 1, 1))
         elif s == "argmin":
             feats.append(Cx.argmin(axis=2) / max(t - 1, 1))
-        elif s == "absmean":
-            feats.append(np.abs(Cx).mean(axis=2))
-        elif s == "rough":  # mean absolute change between consecutive windows
-            feats.append(np.abs(np.diff(Cx, axis=2)).mean(axis=2) if t > 1 else np.zeros((n, ch)))
         elif s.startswith("q"):
-            feats.append(Qv[need_q.index(s)])
+            feats.append(Qv[quantiles.index(s)])
         else:
             raise ValueError(s)
-    return np.concatenate(feats, axis=1)  # stat-major, channel-minor
+    return np.concatenate(feats, axis=1)
 
 
-def _window_lengths(T, fractions, degree, min_len=None):
-    min_len = min_len or (degree + 2)
-    out = []
+def _shape_normalise(Cx):
+    """Divide non-constant coefficients by the window variation, separating shape from amplitude."""
+    Cx = Cx.copy()
+    d = Cx.shape[1] - 2
+    scale = np.sqrt((Cx[:, 1 : d + 1] ** 2).sum(axis=1, keepdims=True) + Cx[:, d + 1 :] ** 2) + 1e-12
+    Cx[:, 1 : d + 1] /= scale
+    return Cx
+
+
+def _energy(Cx):
+    """RMS of each non-constant coefficient over positions: sign-free energy per polynomial degree."""
+    d = Cx.shape[1] - 2
+    return np.sqrt((Cx[:, 1 : d + 1] ** 2).mean(axis=2))
+
+
+def _cross_correlation(Cx):
+    """Correlation over positions between each pair of non-constant channels."""
+    Z = Cx[:, 1:]
+    Z = (Z - Z.mean(axis=2, keepdims=True)) / (Z.std(axis=2, keepdims=True) + 1e-12)
+    corr = Z @ Z.transpose(0, 2, 1) / Z.shape[2]
+    i, j = np.triu_indices(Z.shape[1], k=1)
+    return corr[:, i, j]
+
+
+def _second_order(Cx, degree=2):
+    """Low-degree fit over each channel time course: how the local shape changes along the series."""
+    _, pinv = _cheby_design(Cx.shape[2], degree)
+    return (Cx @ pinv.T).reshape(len(Cx), -1)
+
+
+def stct_pooled(X, fractions=POOL_FRACTIONS, degree=4, stats=POOL_STATS, overlap=8, orthonormal=False,
+                shape=False, energy=False, cross=False, second=False):
+    """Sliding STCT at window lengths given as fractions of the series length.
+
+    Windows slide with stride window // overlap, and each channel time course
+    is summarised by ``stats``.  The proportion of positive residuals is dropped
+    because a residual RMS is never negative.  The remaining flags are the
+    optional algorithmic additions described on their helper functions.
+    """
+    X = np.asarray(X, dtype=float)
+    T = X.shape[1]
+    lengths = []
     for f in fractions:
-        L = int(round(T * f))
-        L = max(min_len, min(L, T))
-        if L not in out:
-            out.append(L)
-    return out
-
-
-def _pyramid_pool(Cx, stats, levels):
-    """Pool over the whole position axis, then over segments of it.
-
-    ``levels`` is an int (1, 2, 4, ... segments) or a tuple of segment counts
-    beyond the whole axis, e.g. (2, 3) for 1, 2 and 3 segments.
-    """
-    parts = [_pool(Cx, stats)]
-    t = Cx.shape[2]
-    counts = levels if isinstance(levels, tuple) else [2**lvl for lvl in range(1, levels)]
-    for k in counts:
-        edges = np.linspace(0, t, k + 1).astype(int)
-        for a, b in zip(edges[:-1], edges[1:]):
-            parts.append(_pool(Cx[:, :, a:max(b, a + 1)], stats))
-    return np.concatenate(parts, axis=1)
-
-
-def stct_channels(X, fractions=(1 / 32, 1 / 16, 1 / 8, 1 / 4), degree=4, min_len=None, overlap=8):
-    """The sliding STCT channels at every scale: list of (n, degree + 2, n_windows) arrays."""
-    X = np.asarray(X, dtype=float)
-    n_samples, T = X.shape
-    out = []
-    for L in _window_lengths(T, fractions, degree, min_len):
-        deg = max(1, min(degree, L - 2))
-        stride = 1 if overlap is None else max(1, L // overlap)
-        Cx = _windowed_coefficients(X, L, deg, stride)
-        if deg < degree:
-            pad = np.zeros((n_samples, degree - deg, Cx.shape[2]))
-            Cx = np.concatenate([Cx[:, : deg + 1], pad, Cx[:, deg + 1 :]], axis=1)
-        out.append(Cx)
-    return out
-
-
-def ppv_biases(X, n_biases=5, **kw):
-    """Per-(scale, channel) bias values: quantiles of the training channel values."""
-    qs = np.linspace(0, 1, n_biases + 2)[1:-1]
-    return [np.quantile(Cx.transpose(1, 0, 2).reshape(Cx.shape[1], -1), qs, axis=1)
-            for Cx in stct_channels(X, **kw)]  # each (n_biases, ch)
-
-
-def stct_ppv(X, biases, **kw):
-    """Proportion of window positions where each channel exceeds each bias."""
-    feats = []
-    for Cx, B in zip(stct_channels(X, **kw), biases):
-        feats.append((Cx[:, None, :, :] > B[None, :, :, None]).mean(axis=3).reshape(len(X), -1))
-    return np.concatenate(feats, axis=1)
-
-
-def rppv_fit(X, n_dir=32, n_biases=5, seed=0, max_fit_samples=512, **kw):
-    """Random polynomial kernels in coefficient space with PPV biases (fit on training data).
-
-    Every window's coefficient vector (standardised per channel) is projected
-    onto ``n_dir`` random unit directions; each direction is a random local
-    polynomial shape, i.e. a random convolution kernel restricted to the
-    Chebyshev subspace, obtained without any extra convolution.  Biases are
-    quantiles of the training projections, as in MiniRocket.
-    """
-    rng = np.random.default_rng(seed)
-    X = np.asarray(X, dtype=float)
-    if len(X) > max_fit_samples:  # biases from a subsample of the training series
-        X = X[rng.choice(len(X), max_fit_samples, replace=False)]
-    qs = np.linspace(0, 1, n_biases + 2)[1:-1]
-    params = []
-    for Cx in stct_channels(X, **kw):
-        n, ch, t = Cx.shape
-        flat = Cx.transpose(1, 0, 2).reshape(ch, -1)
-        mu, sd = flat.mean(axis=1), flat.std(axis=1) + 1e-12
-        D = rng.standard_normal((n_dir, ch))
-        D /= np.linalg.norm(D, axis=1, keepdims=True)
-        P = np.einsum("dc,nct->ndt", D, (Cx - mu[None, :, None]) / sd[None, :, None])
-        B = np.quantile(P.transpose(1, 0, 2).reshape(n_dir, -1), qs, axis=1)  # (n_biases, n_dir)
-        params.append((mu, sd, D, B))
-    return params
-
-
-def stct_rppv(X, params, pyramid=1, block=256, **kw):
-    """PPV at each bias and max, per random polynomial kernel and scale.
-
-    With ``pyramid`` > 1 the PPV and max are also computed over 2, 4, ...
-    segments of the position axis, which adds coarse position information.
-    Series are processed in blocks so memory stays bounded for large test sets.
-    """
-    X = np.asarray(X, dtype=float)
-    out = []
-    for s in range(0, len(X), block):
-        feats = []
-        for Cx, (mu, sd, D, B) in zip(stct_channels(X[s : s + block], **kw), params):
-            P = D @ ((Cx - mu[None, :, None]) / sd[None, :, None])  # (b, n_dir, t), BLAS
-            Bt = B.T[None, :, :, None]
-            t = P.shape[2]
-            segs = [(0, t)]
-            for lvl in range(1, pyramid):
-                edges = np.linspace(0, t, 2**lvl + 1).astype(int)
-                segs += [(a, max(b, a + 1)) for a, b in zip(edges[:-1], edges[1:])]
-            for a, b in segs:
-                Q = P[:, :, a:b]
-                ppv = np.count_nonzero(Q[:, :, None, :] > Bt, axis=3) / (b - a)  # (b, n_dir, n_biases)
-                feats += [ppv.reshape(len(Q), -1), Q.max(axis=2)]
-        out.append(np.concatenate(feats, axis=1))
-    return np.vstack(out)
-
-
-# --------------------------------------------------------------------------
-# Multi-scale STCT pyramids (fixed, tiling windows at 1, 2, 4, ... windows)
-# --------------------------------------------------------------------------
-
-
-def _tiling(n, nw):
-    edges = np.round(np.linspace(0, n, nw + 1)).astype(int)
-    return list(zip(edges[:-1], edges[1:]))
-
-
-def _fit_windows(R, windows, degree, designs, include_residual):
-    """Coefficients (+ residual RMS) of the fit in each (a, b) window of R."""
-    n_samples = R.shape[0]
-    feats, residuals = [], []
-    for a, b in windows:
-        L = b - a
-        deg = max(1, min(degree, L - 2))
-        if (L, deg) not in designs:
-            designs[(L, deg)] = _cheby_design(L, deg)
-        Phi, pinv = designs[(L, deg)]
-        W = R[:, a:b]
-        c = W @ pinv.T
-        res = W - c @ Phi.T
-        if deg < degree:
-            c = np.hstack([c, np.zeros((n_samples, degree - deg))])
-        feats.append(c)
-        if include_residual:
-            feats.append(np.sqrt((res**2).mean(axis=1, keepdims=True)))
-        residuals.append(res)
-    return feats, residuals
-
-
-PRIMES = (1, 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31)
-
-
-def stct_pyramid(X, levels=7, degree=4, detail=False, include_residual=True, min_len=None,
-                 overlap=1, counts=None):
-    """Multi-scale STCT over a ladder of window counts.
-
-    The ladder is dyadic (1, 2, 4, ... 2**(levels-1) windows) unless ``counts``
-    is given, e.g. ``PRIMES[:7]`` for 1, 2, 3, 5, 7, 11, 13 windows: prime
-    counts never share window boundaries, so every scale cuts the series
-    differently, whereas dyadic levels nest.
-    ``overlap=1`` tiles each level (as the paper's windows do, up to rounding);
-    ``overlap=k`` slides the same windows with stride length/k, so a pattern
-    straddling two tiles is still seen whole by some window.
-    ``detail=False``: every level fits the series itself.  ``detail=True``:
-    level j fits the residual left by level j-1's tiling fit, so each scale
-    carries only what coarser scales missed (a polynomial analogue of a wavelet
-    detail decomposition).  Levels whose windows would be shorter than
-    ``min_len`` (default degree + 2) are dropped.
-    """
-    X = np.asarray(X, dtype=float)
-    n_samples, n = X.shape
-    min_len = min_len or (degree + 2)
-    R = X.copy()
-    designs = {}
-    feats = []
-    ladder = list(counts) if counts is not None else [2**j for j in range(levels)]
-    for nw in ladder:
-        if n // nw < min_len:
-            continue
-        tiles = _tiling(n, nw)
-        if overlap > 1:
-            L = n // nw
-            step = max(1, L // overlap)
-            starts = list(range(0, n - L + 1, step))
-            if starts[-1] != n - L:
-                starts.append(n - L)
-            windows = [(s, s + L) for s in starts]
-        else:
-            windows = tiles
-        f, res = _fit_windows(R, windows, degree, designs, include_residual)
-        feats += f
-        if detail:
-            if windows is not tiles:
-                _, res = _fit_windows(R, tiles, degree, designs, False)
-            for (a, b), r in zip(tiles, res):
-                R[:, a:b] = r
-    return np.concatenate(feats, axis=1)
-
-
-def stct_ladder_stats(X, counts=PRIMES[1:7], degree=4, stats=POOL_STATS, min_len=None):
-    """Statistics of each coefficient channel across the tiling windows of each level.
-
-    The ladder keeps one coefficient vector per window, tied to its position.
-    This summarises each level's windows instead, so a level contributes
-    len(stats) * (degree + 2) features however many windows it has.  Use
-    counts with at least two windows: statistics of one window are degenerate.
-    """
-    X = np.asarray(X, dtype=float)
-    n = X.shape[1]
-    min_len = min_len or (degree + 2)
-    designs = {}
+        L = max(degree + 2, min(int(round(T * f)), T))
+        if L not in lengths:
+            lengths.append(L)
     parts = []
-    for nw in counts:
-        if n // nw < min_len:
-            continue
-        f, _ = _fit_windows(X, _tiling(n, nw), degree, designs, True)
-        Cx = np.stack([np.hstack(f[i : i + 2]) for i in range(0, len(f), 2)], axis=2)
-        parts.append(_pool(Cx, stats))
-    if not parts:
-        return np.zeros((len(X), 0))
-    return np.concatenate(parts, axis=1)
-
-
-def stct_pooled(
-    X,
-    fractions=(1 / 32, 1 / 16, 1 / 8, 1 / 4),
-    degree=4,
-    stats=POOL_STATS,
-    min_len=None,
-    overlap=8,
-    pyramid=1,
-):
-    """Sliding multi-scale STCT with translation-invariant pooling.
-
-    Feature count = len(fractions) * (degree + 2) * len(stats), independent of
-    series length.  Window lengths are fractions of the series length so the
-    scales are comparable across datasets (as in the original n_windows
-    parameterisation: 1/8 and 1/16 correspond to 8 and 16 windows).
-    Windows are slid with stride ``L // overlap`` (``overlap=None`` gives the
-    fully dense stride-1 transform); 8x overlap gives the same pooled
-    statistics up to noise at a small fraction of the cost.
-    """
-    parts = [_pyramid_pool(Cx, stats, pyramid)
-             for Cx in stct_channels(X, fractions, degree, min_len, overlap)]
+    for L in lengths:
+        Cx = _windowed_coefficients(X, L, degree, max(1, L // overlap), orthonormal=orthonormal)
+        pooled = _pool(_shape_normalise(Cx) if shape else Cx, stats)
+        if "ppv" in stats:
+            ch = Cx.shape[1]
+            pooled = np.delete(pooled, stats.index("ppv") * ch + ch - 1, axis=1)
+        parts.append(pooled)
+        if energy:
+            parts.append(_energy(Cx))
+        if cross:
+            parts.append(_cross_correlation(Cx))
+        if second:
+            parts.append(_second_order(Cx))
     return np.concatenate(parts, axis=1)
 
 
 # --------------------------------------------------------------------------
-# Combined extractor
+# The STCT+ recipe
 # --------------------------------------------------------------------------
 
 
-def stct_plus(
-    X,
-    fixed=True,
-    pooled=True,
-    diff=True,
-    window_counts=(8, 16),
-    fractions=(1 / 32, 1 / 16, 1 / 8, 1 / 4),
-    degree=4,
-    stats=POOL_STATS,
-    overlap=8,
-    pyramid=1,
-):
-    """STCT+ feature vector: [fixed | pooled] on x, optionally also on diff(x)."""
+def stct_plus(X, counts=LADDER_COUNTS, degree=4, fractions=POOL_FRACTIONS, stats=POOL_STATS, overlap=8,
+              orthonormal=False, shape=False, energy=False, cross=False, second=False):
+    """Prime ladder + pooled statistics."""
     X = np.asarray(X, dtype=float)
-    series = [X]
-    if diff:
-        series.append(np.diff(X, axis=1))
-    parts = []
-    for S in series:
-        if fixed:
-            parts.append(stct_fixed(S, window_counts, degree))
-        if pooled:
-            parts.append(stct_pooled(S, fractions, degree, stats, overlap=overlap, pyramid=pyramid))
-    return np.concatenate(parts, axis=1)
-
-
-# --------------------------------------------------------------------------
-# sklearn transformer wrapper
-# --------------------------------------------------------------------------
+    return np.hstack([stct_ladder(X, counts, degree, orthonormal),
+                      stct_pooled(X, fractions, degree, stats, overlap, orthonormal, shape, energy, cross, second)])
 
 
 class STCTPlus:
@@ -458,7 +283,6 @@ class STCTPlus:
 
 
 if __name__ == "__main__":
-    # sanity: dense coefficients at a window start must equal the fixed-window fit
     rng = np.random.default_rng(0)
     X = rng.standard_normal((3, 200)).cumsum(axis=1)
     L, d = 25, 4
@@ -472,8 +296,15 @@ if __name__ == "__main__":
         assert np.allclose(Cx[:, : d + 1, s], c, atol=1e-8), s
         assert np.allclose(Cx[:, d + 1, s], r, atol=1e-8), s
     assert np.allclose(Cs[:, :, :-1], Cx[:, :, ::3]) and np.allclose(Cs[:, :, -1], Cx[:, :, -1])
-    for T in (24, 84, 96, 601, 1460):
-        F = stct_plus(rng.standard_normal((4, T)).cumsum(axis=1))
+    # orthonormal coefficients span the same fit, so the residual must not change
+    Co = _windowed_coefficients(X, L, d, stride=1, orthonormal=True)
+    assert np.allclose(Co[:, d + 1], Cx[:, d + 1], atol=1e-8)
+    assert np.allclose(stct_ladder(X, (3,), orthonormal=True)[:, 5::6], stct_ladder(X, (3,))[:, 5::6])
+    assert np.abs(_cross_correlation(Cx)).max() <= 1 + 1e-9
+    assert np.abs(_shape_normalise(Cx)[:, 1 : d + 1]).max() <= 1 + 1e-9
+    for T in (15, 24, 84, 96, 601, 1460):
+        F = stct_plus(rng.standard_normal((4, T)).cumsum(axis=1), orthonormal=True, shape=True, energy=True,
+                      cross=True, second=True)
         assert np.isfinite(F).all(), T
         print(T, F.shape)
     print("stct_plus OK")

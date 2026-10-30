@@ -1,7 +1,7 @@
-"""Benchmark harness: STCT / STCT+ feature sets x learners on UCR and TSER.
+"""Benchmark harness: STCT, STCT+ and baseline features x learners on UCR and TSER.
 
-    python bench.py --task classification --datasets dev --methods fixed:rf,plus:rotf
-    python bench.py --task regression --datasets all --methods plus:rotf,minirocket:ridge
+    python bench.py --task classification --datasets all --methods fixed:rf,msP7+pooled:et
+    python bench.py --task regression --datasets all --methods fixed:et,minirocket:ridge
 
 A method is ``<features>:<learner>``.  Results are appended to --out one row
 per (dataset, method) as they finish, so a run can be stopped and resumed:
@@ -134,154 +134,39 @@ def feats_minirocket(Xtr, Xte):
     return mr.fit_transform(Xtr[:, None, :]), mr.transform(Xte[:, None, :])
 
 
-def feats_multirocket(Xtr, Xte):
-    from aeon.transformations.collection.convolution_based import MultiRocket
+def wavelet_features(X, wavelet="db4", level=None):
+    """Raw DWT coefficients, concatenated across levels (verbatim from the paper notebooks)."""
+    import pywt
 
-    mr = MultiRocket(n_jobs=-1, random_state=RNG)
-    return mr.fit_transform(Xtr[:, None, :]), mr.transform(Xte[:, None, :])
-
-
-def _rppv(n_dir=32, n_biases=5, diff=False, pyramid=1, **kw):
-    """Random polynomial kernel PPV features, fit on train; optional diff channel."""
-
-    def fn(Xtr, Xte):
-        pairs = [(Xtr, Xte)]
-        if diff:
-            pairs.append((np.diff(Xtr, axis=1), np.diff(Xte, axis=1)))
-        ftr, fte = [], []
-        for i, (A, B) in enumerate(pairs):
-            P = SP.rppv_fit(A, n_dir=n_dir, n_biases=n_biases, seed=i, **kw)
-            ftr.append(SP.stct_rppv(A, P, pyramid=pyramid, **kw))
-            fte.append(SP.stct_rppv(B, P, pyramid=pyramid, **kw))
-        return np.hstack(ftr), np.hstack(fte)
-
-    return fn
+    feats = []
+    for row in X:
+        max_level = pywt.dwt_max_level(len(row), pywt.Wavelet(wavelet).dec_len)
+        lvl = level or min(4, max_level)
+        coeffs = pywt.wavedec(row, wavelet, level=lvl)
+        feats.append(np.concatenate([np.asarray(c) for c in coeffs]))
+    return np.vstack(feats)
 
 
-PRIME_FRACS = (1 / 3, 1 / 5, 1 / 7, 1 / 11, 1 / 13, 1 / 19, 1 / 29)
+def stft_features(X, nperseg=32, noverlap=None):
+    """Raw STFT magnitude spectrogram, flattened (verbatim from the paper notebooks)."""
+    from scipy.signal import stft
 
-STATS4 = ("mean", "std", "min", "max")
+    noverlap = noverlap or nperseg // 2
+    feats = []
+    for row in X:
+        seg = min(nperseg, len(row))
+        _, _, Zxx = stft(row, nperseg=seg, noverlap=min(noverlap, seg - 1))
+        feats.append(np.abs(Zxx).ravel())
+    return np.vstack(feats)
+
 
 FEATURES = {
-    # round 12: statistics per ladder level, and pooled statistics over prime segments
-    "lstats": _both(lambda X: SP.stct_ladder_stats(X)),
-    "lstats4": _both(lambda X: SP.stct_ladder_stats(X, stats=STATS4)),
-    "msP7+lstats": _both(lambda X: np.hstack([SP.stct_pyramid(X, counts=SP.PRIMES[:7]),
-                                              SP.stct_ladder_stats(X)])),
-    "msP7+lstats4": _both(lambda X: np.hstack([SP.stct_pyramid(X, counts=SP.PRIMES[:7]),
-                                               SP.stct_ladder_stats(X, stats=STATS4)])),
-    "msP7+lstats4+pooled": _both(lambda X: np.hstack([SP.stct_pyramid(X, counts=SP.PRIMES[:7]),
-                                                      SP.stct_ladder_stats(X, stats=STATS4),
-                                                      SP.stct_pooled(X)])),
-    "fixed+seg23": _both(lambda X: np.hstack([SP.stct_fixed(X), SP.stct_pooled(X, pyramid=(2, 3))])),
-    "fixed+seg23s4": _both(lambda X: np.hstack([SP.stct_fixed(X),
-                                                SP.stct_pooled(X, pyramid=(2, 3), stats=STATS4)])),
-    "msP7+seg23s4": _both(lambda X: np.hstack([SP.stct_pyramid(X, counts=SP.PRIMES[:7]),
-                                               SP.stct_pooled(X, pyramid=(2, 3), stats=STATS4)])),
-    # round 11: non-dyadic ladders (prime, ternary, fives, sevens, dense) and prime pooled scales
-    "msP7": _both(lambda X: SP.stct_pyramid(X, counts=SP.PRIMES[:7])),
-    "msP10": _both(lambda X: SP.stct_pyramid(X, counts=SP.PRIMES[:10])),
-    "msT4": _both(lambda X: SP.stct_pyramid(X, counts=(1, 3, 9, 27))),
-    "msF3": _both(lambda X: SP.stct_pyramid(X, counts=(1, 5, 25))),
-    "msS3": _both(lambda X: SP.stct_pyramid(X, counts=(1, 7, 49))),
-    "msAll16": _both(lambda X: SP.stct_pyramid(X, counts=tuple(range(1, 17)))),
-    "msP7+pooled": _both(lambda X: np.hstack([SP.stct_pyramid(X, counts=SP.PRIMES[:7]), SP.stct_pooled(X)])),
-    "basePrimes": _both(lambda X: np.hstack([SP.stct_fixed(X), SP.stct_pooled(X, fractions=PRIME_FRACS)])),
-    "pyr3Primes": _both(lambda X: np.hstack([SP.stct_fixed(X), SP.stct_pooled(X, fractions=PRIME_FRACS, pyramid=3)])),
-    # round 10: pooled position pyramid + shallow dyadic multi-scale block
-    "pyr4": _both(lambda X: SP.stct_plus(X, diff=False, pyramid=4)),
-    "pyr3+ms5": _both(lambda X: np.hstack([SP.stct_plus(X, diff=False, pyramid=3),
-                                           SP.stct_pyramid(X, levels=5)])),
-    "pooledpyr3+ms5": _both(lambda X: np.hstack([SP.stct_pooled(X, pyramid=3),
-                                                 SP.stct_pyramid(X, levels=5)])),
-    "ms5+pooled": _both(lambda X: np.hstack([SP.stct_pyramid(X, levels=5), SP.stct_pooled(X)])),
-    # round 9: overlapping windows in the pyramids
-    "ms7o2": _both(lambda X: SP.stct_pyramid(X, levels=7, overlap=2)),
-    "ms7o4": _both(lambda X: SP.stct_pyramid(X, levels=7, overlap=4)),
-    "lap7o2": _both(lambda X: SP.stct_pyramid(X, levels=7, detail=True, overlap=2)),
-    "lap7o4": _both(lambda X: SP.stct_pyramid(X, levels=7, detail=True, overlap=4)),
-    "ms7o2+pooled": _both(lambda X: np.hstack([SP.stct_pyramid(X, levels=7, overlap=2), SP.stct_pooled(X)])),
-    "lap7o2+pooled": _both(lambda X: np.hstack([
-        SP.stct_pyramid(X, levels=7, detail=True, overlap=2), SP.stct_pooled(X)])),
-    # round 8: multi-scale pyramids (fixed tiling windows at 1, 2, 4, ... windows)
-    "ms5": _both(lambda X: SP.stct_pyramid(X, levels=5)),
-    "ms7": _both(lambda X: SP.stct_pyramid(X, levels=7)),
-    "lap5": _both(lambda X: SP.stct_pyramid(X, levels=5, detail=True)),
-    "lap7": _both(lambda X: SP.stct_pyramid(X, levels=7, detail=True)),
-    "ms7+pooled": _both(lambda X: np.hstack([SP.stct_pyramid(X, levels=7), SP.stct_pooled(X)])),
-    "lap7+pooled": _both(lambda X: np.hstack([SP.stct_pyramid(X, levels=7, detail=True), SP.stct_pooled(X)])),
-    "lap7+pooled+diff": _both(lambda X: np.hstack([
-        SP.stct_pyramid(X, levels=7, detail=True), SP.stct_pooled(X),
-        SP.stct_pyramid(np.diff(X, axis=1), levels=7, detail=True)])),
-    # round 7: combinations at a 3k-9k feature budget
-    "rppv128_diff": _rppv(128, diff=True),
-    "rppv128_b9": _rppv(128, 9),
-    "rppv256": _rppv(256),
-    "rppv96_diff": _rppv(96, diff=True),
-    "rppv128_p2": _rppv(128, pyramid=2),
-    "rppv64_diff_p2": _rppv(64, diff=True, pyramid=2),
-    # round 6: position pyramid on the PPV features
-    "rppv32_p2": _rppv(32, pyramid=2),
-    "rppv64_p2": _rppv(64, pyramid=2),
-    "rppv32_p3": _rppv(32, pyramid=3),
-    "rppv32_diff_p2": _rppv(32, diff=True, pyramid=2),
-    # round 5: scaling the random-kernel PPV recipe
-    "rppv128": _rppv(128),
-    "rppv32_b9": _rppv(32, 9),
-    "rppv32_s6": _rppv(32, fractions=(1 / 64, 1 / 32, 1 / 16, 1 / 8, 1 / 4, 1 / 2)),
-    "rppv32_d6": _rppv(32, degree=6),
-    "rppv32_o16": _rppv(32, overlap=16),
-    "rppv32_diff": _rppv(32, diff=True),
-    "rppv64_diff": _rppv(64, diff=True),
-    "rppv64_s6_diff": _rppv(64, diff=True, fractions=(1 / 64, 1 / 32, 1 / 16, 1 / 8, 1 / 4, 1 / 2)),
-    # paper
-    "fixed": _both(lambda X: SP.stct_fixed(X)),
-    # ablations
-    "fixed4": _both(lambda X: SP.stct_fixed(X, window_counts=(4, 8, 16, 32))),
-    "pooled": _both(lambda X: SP.stct_pooled(X)),
-    "fixed+pooled": _both(lambda X: SP.stct_plus(X, diff=False)),
-    "fixed+diff": _both(lambda X: SP.stct_plus(X, pooled=False)),
-    "pooled+diff": _both(lambda X: SP.stct_plus(X, fixed=False)),
-    # full STCT+
-    "plus": _both(lambda X: SP.stct_plus(X)),
-    "plus5": _both(lambda X: SP.stct_plus(X, fractions=(1 / 64, 1 / 32, 1 / 16, 1 / 8, 1 / 4))),
-    "plus_d6": _both(lambda X: SP.stct_plus(X, degree=6)),
-    "plus_d3": _both(lambda X: SP.stct_plus(X, degree=3)),
-    "plus_q": _both(lambda X: SP.stct_plus(
-        X, stats=SP.POOL_STATS + ("q10", "q90", "absmean", "rough"))),
-    "plus_half": _both(lambda X: SP.stct_plus(
-        X, fractions=(1 / 32, 1 / 16, 1 / 8, 1 / 4, 1 / 2))),
-    "plus_f4": _both(lambda X: SP.stct_plus(X, window_counts=(4, 8, 16, 32))),
-    "plus_all": _both(lambda X: SP.stct_plus(
-        X, window_counts=(4, 8, 16, 32), fractions=(1 / 32, 1 / 16, 1 / 8, 1 / 4, 1 / 2),
-        stats=SP.POOL_STATS + ("q10", "q90", "absmean", "rough"))),
-    # round 3: position pyramid, PPV at training biases
-    "base": _both(lambda X: SP.stct_plus(X, diff=False)),
-    "pyr2": _both(lambda X: SP.stct_plus(X, diff=False, pyramid=2)),
-    "pyr3": _both(lambda X: SP.stct_plus(X, diff=False, pyramid=3)),
-    "pooledpyr2": _both(lambda X: SP.stct_pooled(X, pyramid=2)),
-    "ppv": lambda Xtr, Xte: (lambda B: (SP.stct_ppv(Xtr, B), SP.stct_ppv(Xte, B)))(SP.ppv_biases(Xtr)),
-    "base+ppv": lambda Xtr, Xte: (lambda B: (
-        np.hstack([SP.stct_plus(Xtr, diff=False), SP.stct_ppv(Xtr, B)]),
-        np.hstack([SP.stct_plus(Xte, diff=False), SP.stct_ppv(Xte, B)])))(SP.ppv_biases(Xtr)),
-    "pyr2+ppv": lambda Xtr, Xte: (lambda B: (
-        np.hstack([SP.stct_plus(Xtr, diff=False, pyramid=2), SP.stct_ppv(Xtr, B)]),
-        np.hstack([SP.stct_plus(Xte, diff=False, pyramid=2), SP.stct_ppv(Xte, B)])))(SP.ppv_biases(Xtr)),
-    # round 4: random polynomial kernels in coefficient space, PPV at training biases + max
-    "rppv32": lambda Xtr, Xte: (lambda P: (SP.stct_rppv(Xtr, P), SP.stct_rppv(Xte, P)))(
-        SP.rppv_fit(Xtr, n_dir=32)),
-    "rppv64": lambda Xtr, Xte: (lambda P: (SP.stct_rppv(Xtr, P), SP.stct_rppv(Xte, P)))(
-        SP.rppv_fit(Xtr, n_dir=64)),
-    "base+rppv32": lambda Xtr, Xte: (lambda P: (
-        np.hstack([SP.stct_plus(Xtr, diff=False), SP.stct_rppv(Xtr, P)]),
-        np.hstack([SP.stct_plus(Xte, diff=False), SP.stct_rppv(Xte, P)])))(SP.rppv_fit(Xtr, n_dir=32)),
-    "base+rppv64": lambda Xtr, Xte: (lambda P: (
-        np.hstack([SP.stct_plus(Xtr, diff=False), SP.stct_rppv(Xtr, P)]),
-        np.hstack([SP.stct_plus(Xte, diff=False), SP.stct_rppv(Xte, P)])))(SP.rppv_fit(Xtr, n_dir=64)),
-    # references
-    "raw": _both(lambda X: X),
+    "fixed": _both(SP.stct_fixed),  # the paper's STCT
+    "msP7+pooled": _both(SP.stct_plus),  # STCT+ before the algorithm selection
+    "stct_plus": _both(lambda X: SP.stct_plus(X, orthonormal=True)),  # STCT+ as selected by algo_select.py
+    "wavelet": _both(wavelet_features),
+    "stft": _both(stft_features),
     "minirocket": feats_minirocket,
-    "multirocket": feats_multirocket,
 }
 
 
@@ -290,37 +175,9 @@ FEATURES = {
 # --------------------------------------------------------------------------
 
 
-class RandomRotation:
-    """Append a fixed random orthonormal rotation of the features (oblique splits for trees)."""
-
-    def __init__(self, seed=0):
-        self.seed = seed
-
-    def fit(self, X, y=None):
-        d = X.shape[1]
-        G = np.random.default_rng(self.seed).standard_normal((d, d))
-        self.R_, _ = np.linalg.qr(G)
-        return self
-
-    def transform(self, X):
-        return np.hstack([X, X @ self.R_])
-
-    def fit_transform(self, X, y=None):
-        return self.fit(X, y).transform(X)
-
-    def get_params(self, deep=True):
-        return {"seed": self.seed}
-
-    def set_params(self, **p):
-        self.seed = p.get("seed", self.seed)
-        return self
-
-
 def make_learner(name, task):
-    from sklearn.ensemble import (
-        ExtraTreesClassifier, ExtraTreesRegressor, HistGradientBoostingClassifier,
-        HistGradientBoostingRegressor, RandomForestClassifier, RandomForestRegressor,
-    )
+    from sklearn.ensemble import (ExtraTreesClassifier, ExtraTreesRegressor, RandomForestClassifier,
+                                  RandomForestRegressor)
     from sklearn.linear_model import RidgeClassifierCV, RidgeCV
     from sklearn.pipeline import make_pipeline
     from sklearn.preprocessing import StandardScaler
@@ -330,42 +187,14 @@ def make_learner(name, task):
         est = (RandomForestClassifier if cls else RandomForestRegressor)(
             n_estimators=300, random_state=RNG, n_jobs=-1)
         return make_pipeline(StandardScaler(), est)
-    if name in ("et", "et1k", "et_mf", "et_mf25"):
-        mf = {"et_mf": 0.1, "et_mf25": 0.25}.get(name, "sqrt" if cls else 1.0)
+    if name == "et":
         est = (ExtraTreesClassifier if cls else ExtraTreesRegressor)(
-            n_estimators=1000 if name == "et1k" else 500, max_features=mf,
-            random_state=RNG, n_jobs=-1)
+            n_estimators=500, random_state=RNG, n_jobs=-1)
         return make_pipeline(StandardScaler(), est)
-    if name == "hgb":
-        est = (HistGradientBoostingClassifier if cls else HistGradientBoostingRegressor)(
-            random_state=RNG)
-        return est
     if name == "ridge":
         alphas = np.logspace(-3, 3, 10)
         est = RidgeClassifierCV(alphas=alphas) if cls else RidgeCV(alphas=alphas)
         return make_pipeline(StandardScaler(), est)
-    if name == "etrot":  # ExtraTrees on [F, F R] with a fixed random rotation R
-        est = (ExtraTreesClassifier if cls else ExtraTreesRegressor)(
-            n_estimators=500, random_state=RNG, n_jobs=-1)
-        return make_pipeline(StandardScaler(), RandomRotation(RNG), est)
-    if name == "vote":  # soft vote of ExtraTrees-500 and RandomForest-300
-        from sklearn.ensemble import VotingClassifier, VotingRegressor
-
-        et = (ExtraTreesClassifier if cls else ExtraTreesRegressor)(
-            n_estimators=500, random_state=RNG, n_jobs=-1)
-        rf = (RandomForestClassifier if cls else RandomForestRegressor)(
-            n_estimators=300, random_state=RNG, n_jobs=-1)
-        if cls:
-            est = VotingClassifier([("et", et), ("rf", rf)], voting="soft")
-        else:
-            est = VotingRegressor([("et", et), ("rf", rf)])
-        return make_pipeline(StandardScaler(), est)
-    if name == "rotf":
-        if cls:
-            from aeon.classification.sklearn import RotationForestClassifier as RotF
-        else:
-            from aeon.regression.sklearn import RotationForestRegressor as RotF
-        return RotF(n_estimators=200, n_jobs=-1, random_state=RNG)
     raise ValueError(name)
 
 
@@ -481,7 +310,7 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--task", choices=["classification", "regression"], required=True)
     ap.add_argument("--datasets", default="dev")
-    ap.add_argument("--methods", default="fixed:rf,plus:rotf")
+    ap.add_argument("--methods", default="fixed:rf,msP7+pooled:et")
     ap.add_argument("--out", required=True)
     ap.add_argument("--max-train", type=int, default=None)
     ap.add_argument("--max-len", type=int, default=None)

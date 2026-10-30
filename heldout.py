@@ -2,7 +2,8 @@
 
 Each recipe is ranked alone with the references, so several similar STCT
 variants cannot push the references down the table.  Held-out datasets are
-those never used to choose a configuration (not in bench.DEV_UCR / DEV_TSER).
+those whose test scores were not used when the recipe structure was chosen
+(not in bench.DEV_UCR / DEV_TSER).
 Writes results/heldout_<task>.md.
 """
 import numpy as np
@@ -14,14 +15,12 @@ import bench
 CONFIG = {
     "classification": dict(
         key="accuracy", dev=bench.DEV_UCR,
-        recipes=["fixed:rf", "fixed:et", "msP7:et", "fixed+pooled:et", "msP7+pooled:et", "rppv128:ridge",
-                 "rppv128_p2:ridge", "minirocket:ridge"],
+        recipes=["fixed:rf", "fixed:et", "msP7+pooled:et", "stct_plus:et", "minirocket:ridge"],
         refs=["HC2", "MR-Hydra", "MultiROCKET", "RDST", "WEASEL-2.0", "MiniROCKET", "InceptionTime", "ROCKET",
               "QUANT", "FreshPRINCE", "Catch22", "1NN-DTW"]),
     "regression": dict(
         key="rmse", dev=bench.DEV_TSER,
-        recipes=["fixed:rf", "fixed:et", "ms5:et", "msP7:et", "fixed+pooled:et", "ms5+pooled:et", "rppv128:ridge",
-                 "minirocket:ridge"],
+        recipes=["fixed:rf", "fixed:et", "msP7+pooled:et", "stct_plus:et", "minirocket:ridge"],
         refs=["DrCIF", "FreshPRINCE", "InceptionTime", "RotF", "ROCKET", "Ridge", "RandF", "XGBoost", "GridSVR",
               "ResNet", "FPCR", "1NN-DTW", "FCN"]),
 }
