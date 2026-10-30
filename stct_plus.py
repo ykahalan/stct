@@ -165,11 +165,15 @@ def _window_lengths(T, fractions, degree, min_len=None):
 
 
 def _pyramid_pool(Cx, stats, levels):
-    """Pool over the whole position axis, then over 2, 4, ... segments of it."""
+    """Pool over the whole position axis, then over segments of it.
+
+    ``levels`` is an int (1, 2, 4, ... segments) or a tuple of segment counts
+    beyond the whole axis, e.g. (2, 3) for 1, 2 and 3 segments.
+    """
     parts = [_pool(Cx, stats)]
     t = Cx.shape[2]
-    for lvl in range(1, levels):
-        k = 2**lvl
+    counts = levels if isinstance(levels, tuple) else [2**lvl for lvl in range(1, levels)]
+    for k in counts:
         edges = np.linspace(0, t, k + 1).astype(int)
         for a, b in zip(edges[:-1], edges[1:]):
             parts.append(_pool(Cx[:, :, a:max(b, a + 1)], stats))
@@ -341,6 +345,30 @@ def stct_pyramid(X, levels=7, degree=4, detail=False, include_residual=True, min
             for (a, b), r in zip(tiles, res):
                 R[:, a:b] = r
     return np.concatenate(feats, axis=1)
+
+
+def stct_ladder_stats(X, counts=PRIMES[1:7], degree=4, stats=POOL_STATS, min_len=None):
+    """Statistics of each coefficient channel across the tiling windows of each level.
+
+    The ladder keeps one coefficient vector per window, tied to its position.
+    This summarises each level's windows instead, so a level contributes
+    len(stats) * (degree + 2) features however many windows it has.  Use
+    counts with at least two windows: statistics of one window are degenerate.
+    """
+    X = np.asarray(X, dtype=float)
+    n = X.shape[1]
+    min_len = min_len or (degree + 2)
+    designs = {}
+    parts = []
+    for nw in counts:
+        if n // nw < min_len:
+            continue
+        f, _ = _fit_windows(X, _tiling(n, nw), degree, designs, True)
+        Cx = np.stack([np.hstack(f[i : i + 2]) for i in range(0, len(f), 2)], axis=2)
+        parts.append(_pool(Cx, stats))
+    if not parts:
+        return np.zeros((len(X), 0))
+    return np.concatenate(parts, axis=1)
 
 
 def stct_pooled(

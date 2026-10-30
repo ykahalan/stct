@@ -47,10 +47,10 @@ for task in ["classification", "regression"]:
     df = load_all(task)
     fast = sorted(m for m in df.method.unique() if not any(s in m for s in SLOW))
     ridge = sorted(m for m in fast if m.startswith("rppv") or m == "minirocket:ridge")
-    ladders = sorted(m for m in fast if m.startswith(("ms", "lap", "pyr", "base", "pooledpyr"))
-                     or m in ("fixed:rf", "fixed4:rf", "fixed+pooled:et", "minirocket:ridge"))
+    ladders = sorted(m for m in fast if m.startswith(("ms", "lap", "pyr", "base", "pooledpyr", "lstats", "fixed+seg"))
+                     or m in ("fixed:rf", "fixed:et", "fixed4:rf", "fixed+pooled:et", "minirocket:ridge"))
     lines += [f"## {task}", ""]
-    lines += block(task, None, ladders, "Multi-scale ladders, overlap, position pyramids (rounds 8-11)")
+    lines += block(task, None, ladders, "Multi-scale ladders, overlap, position and level statistics (rounds 8-12)")
     lines += block(task, None, ridge, "Random polynomial kernel PPV recipes (rounds 4-7)")
     lines += block(task, None, fast, "Fast learners (RF / ExtraTrees / ridge), every feature set")
     lines += block(task, None, None, "Including the slow learners (RotationForest, HistGB) on the "

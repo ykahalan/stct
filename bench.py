@@ -160,7 +160,24 @@ def _rppv(n_dir=32, n_biases=5, diff=False, pyramid=1, **kw):
 
 PRIME_FRACS = (1 / 3, 1 / 5, 1 / 7, 1 / 11, 1 / 13, 1 / 19, 1 / 29)
 
+STATS4 = ("mean", "std", "min", "max")
+
 FEATURES = {
+    # round 12: statistics per ladder level, and pooled statistics over prime segments
+    "lstats": _both(lambda X: SP.stct_ladder_stats(X)),
+    "lstats4": _both(lambda X: SP.stct_ladder_stats(X, stats=STATS4)),
+    "msP7+lstats": _both(lambda X: np.hstack([SP.stct_pyramid(X, counts=SP.PRIMES[:7]),
+                                              SP.stct_ladder_stats(X)])),
+    "msP7+lstats4": _both(lambda X: np.hstack([SP.stct_pyramid(X, counts=SP.PRIMES[:7]),
+                                               SP.stct_ladder_stats(X, stats=STATS4)])),
+    "msP7+lstats4+pooled": _both(lambda X: np.hstack([SP.stct_pyramid(X, counts=SP.PRIMES[:7]),
+                                                      SP.stct_ladder_stats(X, stats=STATS4),
+                                                      SP.stct_pooled(X)])),
+    "fixed+seg23": _both(lambda X: np.hstack([SP.stct_fixed(X), SP.stct_pooled(X, pyramid=(2, 3))])),
+    "fixed+seg23s4": _both(lambda X: np.hstack([SP.stct_fixed(X),
+                                                SP.stct_pooled(X, pyramid=(2, 3), stats=STATS4)])),
+    "msP7+seg23s4": _both(lambda X: np.hstack([SP.stct_pyramid(X, counts=SP.PRIMES[:7]),
+                                               SP.stct_pooled(X, pyramid=(2, 3), stats=STATS4)])),
     # round 11: non-dyadic ladders (prime, ternary, fives, sevens, dense) and prime pooled scales
     "msP7": _both(lambda X: SP.stct_pyramid(X, counts=SP.PRIMES[:7])),
     "msP10": _both(lambda X: SP.stct_pyramid(X, counts=SP.PRIMES[:10])),
