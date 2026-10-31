@@ -164,6 +164,8 @@ FEATURES = {
     "fixed": _both(SP.stct_fixed),  # the paper's STCT
     "msP7+pooled": _both(SP.stct_plus),  # STCT+ before the algorithm selection
     "stct_plus": _both(lambda X: SP.stct_plus(X, orthonormal=True)),  # STCT+ as selected by algo_select.py
+    "paper_pooled": _both(lambda X: SP.stct_plus(X, paper=True)),  # paper features + pooled statistics
+    "paper_plus": _both(lambda X: SP.stct_plus(X, paper=True, resid_kind="peak", global_q=True)),  # as selected
     "wavelet": _both(wavelet_features),
     "stft": _both(stft_features),
     "minirocket": feats_minirocket,

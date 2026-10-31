@@ -6,22 +6,23 @@
 
 |                  |   mean |   mean_rank |   best_on |
 |:-----------------|-------:|------------:|----------:|
-| HC2              | 0.8764 |      4.7589 |        13 |
-| MR-Hydra         | 0.868  |      5.5536 |         9 |
-| MultiROCKET      | 0.8657 |      5.9107 |         3 |
-| RDST             | 0.8631 |      7.1518 |         7 |
-| QUANT            | 0.8544 |      7.2321 |         8 |
-| ROCKET           | 0.8558 |      7.3393 |         3 |
-| InceptionTime    | 0.8578 |      7.3527 |        15 |
-| minirocket:ridge | 0.8597 |      7.4688 |         0 |
-| WEASEL-2.0       | 0.8605 |      7.6295 |         7 |
-| MiniROCKET       | 0.858  |      7.6339 |         0 |
-| stct_plus:et     | 0.8447 |      8.6429 |         0 |
-| FreshPRINCE      | 0.8416 |      8.8839 |         9 |
-| fixed:et         | 0.7967 |     11.058  |         0 |
-| fixed:rf         | 0.7816 |     12.3884 |         0 |
-| Catch22          | 0.7814 |     13.0938 |         1 |
-| 1NN-DTW          | 0.7421 |     13.9018 |         1 |
+| HC2              | 0.8764 |      4.9375 |        11 |
+| MR-Hydra         | 0.868  |      5.7812 |         9 |
+| MultiROCKET      | 0.8657 |      6.183  |         2 |
+| RDST             | 0.8631 |      7.4955 |         7 |
+| QUANT            | 0.8544 |      7.5759 |         7 |
+| InceptionTime    | 0.8578 |      7.75   |        15 |
+| ROCKET           | 0.8558 |      7.7634 |         3 |
+| minirocket:ridge | 0.8597 |      7.817  |         0 |
+| WEASEL-2.0       | 0.8605 |      7.9643 |         7 |
+| MiniROCKET       | 0.858  |      7.9777 |         0 |
+| paper_plus:et    | 0.8471 |      9.0848 |         2 |
+| FreshPRINCE      | 0.8416 |      9.442  |         9 |
+| paper_pooled:et  | 0.8448 |      9.4554 |         2 |
+| fixed:et         | 0.7967 |     11.808  |         0 |
+| fixed:rf         | 0.7816 |     13.2232 |         0 |
+| Catch22          | 0.7814 |     13.9598 |         1 |
+| 1NN-DTW          | 0.7421 |     14.7812 |         1 |
 
 ## Pairwise: each STCT variant vs each reference (wins/ties/losses on accuracy, Wilcoxon p)
 
@@ -51,18 +52,30 @@
 | fixed:et         | WEASEL-2.0    |     22 |      7 |       83 |       0      |     -0.0638 |
 | fixed:et         | Catch22       |     71 |      5 |       36 |       0.0017 |      0.0153 |
 | fixed:et         | 1NN-DTW       |     81 |      8 |       23 |       0      |      0.0547 |
-| stct_plus:et     | HC2           |     15 |     22 |       75 |       0      |     -0.0317 |
-| stct_plus:et     | MR-Hydra      |     22 |     19 |       71 |       0      |     -0.0233 |
-| stct_plus:et     | InceptionTime |     42 |     12 |       58 |       0.0099 |     -0.0131 |
-| stct_plus:et     | MultiROCKET   |     24 |     17 |       71 |       0      |     -0.021  |
-| stct_plus:et     | MiniROCKET    |     35 |     17 |       60 |       0.0011 |     -0.0133 |
-| stct_plus:et     | ROCKET        |     35 |     14 |       63 |       0.0019 |     -0.0111 |
-| stct_plus:et     | FreshPRINCE   |     51 |     12 |       49 |       0.8852 |      0.0031 |
-| stct_plus:et     | RDST          |     31 |     15 |       66 |       0.0001 |     -0.0184 |
-| stct_plus:et     | QUANT         |     36 |     14 |       62 |       0.0036 |     -0.0097 |
-| stct_plus:et     | WEASEL-2.0    |     37 |     12 |       63 |       0.0005 |     -0.0158 |
-| stct_plus:et     | Catch22       |     91 |      8 |       13 |       0      |      0.0633 |
-| stct_plus:et     | 1NN-DTW       |     96 |      7 |        9 |       0      |      0.1027 |
+| paper_pooled:et  | HC2           |     13 |     18 |       81 |       0      |     -0.0316 |
+| paper_pooled:et  | MR-Hydra      |     21 |     13 |       78 |       0      |     -0.0232 |
+| paper_pooled:et  | InceptionTime |     41 |     11 |       60 |       0.0038 |     -0.013  |
+| paper_pooled:et  | MultiROCKET   |     22 |     18 |       72 |       0      |     -0.0209 |
+| paper_pooled:et  | MiniROCKET    |     34 |     14 |       64 |       0.0007 |     -0.0132 |
+| paper_pooled:et  | ROCKET        |     35 |     13 |       64 |       0.0014 |     -0.011  |
+| paper_pooled:et  | FreshPRINCE   |     51 |     13 |       48 |       0.7841 |      0.0032 |
+| paper_pooled:et  | RDST          |     31 |     12 |       69 |       0      |     -0.0183 |
+| paper_pooled:et  | QUANT         |     32 |     16 |       64 |       0.0017 |     -0.0096 |
+| paper_pooled:et  | WEASEL-2.0    |     34 |     12 |       66 |       0.0005 |     -0.0157 |
+| paper_pooled:et  | Catch22       |     93 |      6 |       13 |       0      |      0.0634 |
+| paper_pooled:et  | 1NN-DTW       |     96 |      6 |       10 |       0      |      0.1027 |
+| paper_plus:et    | HC2           |     15 |     18 |       79 |       0      |     -0.0294 |
+| paper_plus:et    | MR-Hydra      |     22 |     15 |       75 |       0      |     -0.021  |
+| paper_plus:et    | InceptionTime |     41 |     10 |       61 |       0.0094 |     -0.0107 |
+| paper_plus:et    | MultiROCKET   |     25 |     14 |       73 |       0      |     -0.0186 |
+| paper_plus:et    | MiniROCKET    |     33 |     16 |       63 |       0.0024 |     -0.011  |
+| paper_plus:et    | ROCKET        |     41 |     14 |       57 |       0.0077 |     -0.0088 |
+| paper_plus:et    | FreshPRINCE   |     55 |     14 |       43 |       0.8622 |      0.0055 |
+| paper_plus:et    | RDST          |     33 |     14 |       65 |       0.0003 |     -0.0161 |
+| paper_plus:et    | QUANT         |     32 |     19 |       61 |       0.0058 |     -0.0073 |
+| paper_plus:et    | WEASEL-2.0    |     33 |     15 |       64 |       0.0005 |     -0.0134 |
+| paper_plus:et    | Catch22       |     93 |      6 |       13 |       0      |      0.0657 |
+| paper_plus:et    | 1NN-DTW       |     96 |      6 |       10 |       0      |      0.105  |
 | minirocket:ridge | HC2           |     20 |     16 |       76 |       0      |     -0.0167 |
 | minirocket:ridge | MR-Hydra      |     26 |     19 |       67 |       0      |     -0.0083 |
 | minirocket:ridge | InceptionTime |     50 |     16 |       46 |       0.9592 |      0.0019 |
@@ -78,11 +91,15 @@
 
 ## Pairwise among STCT variants
 
-| a            | b                |   a_wins |   ties |   b_wins |   wilcoxon_p |
-|:-------------|:-----------------|---------:|-------:|---------:|-------------:|
-| fixed:rf     | fixed:et         |       18 |     12 |       82 |       0      |
-| fixed:rf     | stct_plus:et     |       11 |     11 |       90 |       0      |
-| fixed:rf     | minirocket:ridge |       15 |     11 |       86 |       0      |
-| fixed:et     | stct_plus:et     |       18 |     14 |       80 |       0      |
-| fixed:et     | minirocket:ridge |       23 |      9 |       80 |       0      |
-| stct_plus:et | minirocket:ridge |       34 |     16 |       62 |       0.0005 |
+| a               | b                |   a_wins |   ties |   b_wins |   wilcoxon_p |
+|:----------------|:-----------------|---------:|-------:|---------:|-------------:|
+| fixed:rf        | fixed:et         |       18 |     12 |       82 |       0      |
+| fixed:rf        | paper_pooled:et  |       15 |      8 |       89 |       0      |
+| fixed:rf        | paper_plus:et    |       12 |      8 |       92 |       0      |
+| fixed:rf        | minirocket:ridge |       15 |     11 |       86 |       0      |
+| fixed:et        | paper_pooled:et  |       21 |     13 |       78 |       0      |
+| fixed:et        | paper_plus:et    |       18 |     15 |       79 |       0      |
+| fixed:et        | minirocket:ridge |       23 |      9 |       80 |       0      |
+| paper_pooled:et | paper_plus:et    |       36 |     26 |       50 |       0.2189 |
+| paper_pooled:et | minirocket:ridge |       30 |     19 |       63 |       0.0003 |
+| paper_plus:et   | minirocket:ridge |       34 |     15 |       63 |       0.0002 |

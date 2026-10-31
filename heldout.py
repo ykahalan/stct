@@ -15,12 +15,12 @@ import bench
 CONFIG = {
     "classification": dict(
         key="accuracy", dev=bench.DEV_UCR,
-        recipes=["fixed:rf", "fixed:et", "msP7+pooled:et", "stct_plus:et", "minirocket:ridge"],
+        recipes=["fixed:rf", "fixed:et", "paper_pooled:et", "paper_plus:et", "minirocket:ridge"],
         refs=["HC2", "MR-Hydra", "MultiROCKET", "RDST", "WEASEL-2.0", "MiniROCKET", "InceptionTime", "ROCKET",
               "QUANT", "FreshPRINCE", "Catch22", "1NN-DTW"]),
     "regression": dict(
         key="rmse", dev=bench.DEV_TSER,
-        recipes=["fixed:rf", "fixed:et", "msP7+pooled:et", "stct_plus:et", "minirocket:ridge"],
+        recipes=["fixed:rf", "fixed:et", "paper_pooled:et", "paper_plus:et", "minirocket:ridge"],
         refs=["DrCIF", "FreshPRINCE", "InceptionTime", "RotF", "ROCKET", "Ridge", "RandF", "XGBoost", "GridSVR",
               "ResNet", "FPCR", "1NN-DTW", "FCN"]),
 }

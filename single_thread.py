@@ -84,6 +84,9 @@ def main():
             prev = pd.read_csv(out)
             done = set(zip(prev.dataset, prev.method))
         methods = {"stct_plus": lambda *x: run_stct(lambda X: SP.stct_plus(X, orthonormal=True), *x),
+                   "paper_pooled": lambda *x: run_stct(lambda X: SP.stct_plus(X, paper=True), *x),
+                   "paper_plus": lambda *x: run_stct(
+                       lambda X: SP.stct_plus(X, paper=True, resid_kind="peak", global_q=True), *x),
                    "fixed": lambda *x: run_stct(SP.stct_fixed, *x),
                    "minirocket": run_minirocket}
         if cls:

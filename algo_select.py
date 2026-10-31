@@ -18,8 +18,10 @@ results/algo_select.csv and the choice to results/algo_selected.json.
 from __future__ import annotations
 
 import argparse
+import gc
 import json
 import os
+import time
 import warnings
 
 import numpy as np
@@ -35,13 +37,18 @@ MAX_FEATURES = 600
 CANDIDATES = ("orthonormal", "shape", "energy", "cross", "second")
 # candidates that are not a single boolean option of stct_plus
 NAMED = {"fixed_swap": dict(fractions=(1 / 8, 1 / 4), sample_windows=(8, 32)),
-         "fixed_add": dict(sample_windows=(16,))}
-CONFLICTS = {"fixed_swap": "fixed_add", "fixed_add": "fixed_swap"}
+         "fixed_add": dict(sample_windows=(16,)),
+         "resid_sign": dict(resid_kind="sign"),
+         "resid_peak": dict(resid_kind="peak")}
+CONFLICTS = {"fixed_swap": "fixed_add", "fixed_add": "fixed_swap", "resid_sign": "resid_peak", "resid_peak": "resid_sign"}
+
+
+RECIPE = {}  # keyword arguments of the base recipe, set from the command line
 
 
 def expand(flags):
     """Turn candidate names into stct_plus keyword arguments."""
-    kw = {}
+    kw = dict(RECIPE)
     for name, on in flags.items():
         if on:
             kw.update(NAMED.get(name, {name: True}))
@@ -59,16 +66,28 @@ def load_train(task, name):
     return X, (y if task == "classification" else np.asarray(y, float))
 
 
-def cv_score(task, X, y, flags):
+def cv_score(task, X, y, flags, seed=bench.RNG):
     F = np.nan_to_num(SP.stct_plus(X, **expand(flags)))
     if task == "classification":
-        est = ExtraTreesClassifier(n_estimators=200, random_state=bench.RNG, n_jobs=-1)
+        est = ExtraTreesClassifier(n_estimators=200, random_state=seed, n_jobs=-1)
         counts = np.unique(y, return_counts=True)[1]
-        cv = (StratifiedKFold if counts.max() >= 5 else KFold)(5, shuffle=True, random_state=bench.RNG)
+        cv = (StratifiedKFold if counts.max() >= 5 else KFold)(5, shuffle=True, random_state=seed)
         return float((cross_val_predict(est, F, y, cv=cv) == y).mean())
-    est = ExtraTreesRegressor(n_estimators=200, random_state=bench.RNG, n_jobs=-1)
-    pred = cross_val_predict(est, F, y, cv=KFold(5, shuffle=True, random_state=bench.RNG))
+    est = ExtraTreesRegressor(n_estimators=200, random_state=seed, n_jobs=-1)
+    pred = cross_val_predict(est, F, y, cv=KFold(5, shuffle=True, random_state=seed))
     return float(np.sqrt(((pred - y) ** 2).mean()))
+
+
+def with_retry(fn, *args, attempts=30, wait=120):
+    """Wait and retry when the machine is short of memory."""
+    for attempt in range(attempts):
+        try:
+            return fn(*args)
+        except MemoryError:
+            gc.collect()
+            print(f"memory short, waiting {wait}s (attempt {attempt + 1})", flush=True)
+            time.sleep(wait)
+    return fn(*args)
 
 
 def n_features(flags):
@@ -82,7 +101,11 @@ def main():
     ap.add_argument("--prefix", default="results/algo")
     ap.add_argument("--base", default="", help="comma-separated changes already adopted")
     ap.add_argument("--candidates", default=",".join(CANDIDATES))
+    ap.add_argument("--recipe", default="ladder", choices=["ladder", "paper"])
+    ap.add_argument("--noise-seeds", default="", help="comma-separated seeds: rescore the base to measure noise")
     a = ap.parse_args()
+    if a.recipe == "paper":
+        RECIPE["paper"] = True
     candidates = a.candidates.split(",")
     names = {"classification": a.classification.split(",") if a.classification else bench.UCR,
              "regression": a.regression.split(",") if a.regression else bench.TSER}
@@ -98,15 +121,27 @@ def main():
     csv = f"{a.prefix}_select.csv"
     if os.path.exists(csv):
         os.remove(csv)
-    cache = {}
+    # per-dataset scores persist on disk, so an interrupted run resumes where it stopped
+    scores_csv = f"{a.prefix}_scores.csv"
+    known = {}
+    if os.path.exists(scores_csv):
+        prev = pd.read_csv(scores_csv, keep_default_na=False)
+        known = {(r.key, r.task, r.dataset): r.score for r in prev.itertuples()}
 
     def score(flags):
-        key = tuple(sorted(k for k, v in flags.items() if v))
-        if key not in cache:
-            cache[key] = {t: pd.Series({n: cv_score(t, X, y, flags) for n, (X, y) in d.items()})
-                          for t, d in data.items()}
-            print(f"scored {key}", flush=True)
-        return cache[key]
+        key = "+".join(sorted(k for k, v in flags.items() if v)) or "base"
+        out = {}
+        for t, d in data.items():
+            vals = {}
+            for n, (X, y) in d.items():
+                if (key, t, n) not in known:
+                    known[key, t, n] = with_retry(cv_score, t, X, y, flags)
+                    row = dict(key=key, task=t, dataset=n, score=known[key, t, n])
+                    pd.DataFrame([row]).to_csv(scores_csv, mode="a", header=not os.path.exists(scores_csv), index=False)
+                vals[n] = known[key, t, n]
+            out[t] = pd.Series(vals)
+        print(f"scored {key}", flush=True)
+        return out
 
     def compare(cand, base):
         d = cand["classification"] - base["classification"]
@@ -122,6 +157,14 @@ def main():
 
     chosen = {b: True for b in a.base.split(",") if b}
     base = score(chosen)
+    for seed in [int(x) for x in a.noise_seeds.split(",") if x]:
+        again = {t: pd.Series({n: with_retry(cv_score, t, X, y, chosen, seed) for n, (X, y) in d.items()})
+                 for t, d in data.items()}
+        c = compare(again, base)
+        c.update(seed=seed)
+        noise = f"{a.prefix}_noise.csv"
+        pd.DataFrame([c]).to_csv(noise, mode="a", header=not os.path.exists(noise), index=False)
+        print("NOISE", json.dumps(c), flush=True)
     step = 0
     while True:
         step += 1

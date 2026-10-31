@@ -1,0 +1,10 @@
+{
+  "chosen": [
+    "global_q",
+    "resid_peak"
+  ],
+  "features": 458,
+  "train_cv_accuracy": 0.8410830947878091,
+  "classification_datasets": 117,
+  "regression_datasets": 26
+}
