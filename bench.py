@@ -166,6 +166,7 @@ FEATURES = {
     "stct_plus": _both(lambda X: SP.stct_plus(X, orthonormal=True)),  # STCT+ as selected by algo_select.py
     "paper_pooled": _both(lambda X: SP.stct_plus(X, paper=True)),  # paper features + pooled statistics
     "paper_plus": _both(lambda X: SP.stct_plus(X, paper=True, resid_kind="peak", global_q=True)),  # as selected
+    "paper_tuned": _both(lambda X: SP.stct_plus(X, paper=True, fractions=(1 / 128, 1 / 64, 1 / 32, 1 / 16, 1 / 8, 1 / 4))),  # chosen by param_search.py
     "wavelet": _both(wavelet_features),
     "stft": _both(stft_features),
     "minirocket": feats_minirocket,
@@ -192,6 +193,10 @@ def make_learner(name, task):
     if name == "et":
         est = (ExtraTreesClassifier if cls else ExtraTreesRegressor)(
             n_estimators=500, random_state=RNG, n_jobs=-1)
+        return make_pipeline(StandardScaler(), est)
+    if name == "et_tuned":  # chosen by param_search.py
+        est = (ExtraTreesClassifier if cls else ExtraTreesRegressor)(
+            n_estimators=500, max_features=0.1 if cls else 1.0, random_state=RNG, n_jobs=-1)
         return make_pipeline(StandardScaler(), est)
     if name == "ridge":
         alphas = np.logspace(-3, 3, 10)

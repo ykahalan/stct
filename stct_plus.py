@@ -31,6 +31,17 @@ def _cheby_design(win_len, deg):
     return Phi, np.linalg.pinv(Phi)
 
 
+def _residual_norm(res, norm):
+    """Size of the fit residuals along the last axis: RMS, mean absolute or maximum absolute."""
+    if norm == "rms":
+        return np.sqrt((res**2).mean(axis=-1))
+    if norm == "mae":
+        return np.abs(res).mean(axis=-1)
+    if norm == "max":
+        return np.abs(res).max(axis=-1)
+    raise ValueError(norm)
+
+
 def _residual_measure(res, kind):
     """Summarise fit residuals along the last axis: sign-change rate or peak relative to RMS."""
     if kind == "sign":
@@ -61,7 +72,7 @@ def _safe_cheby_params(n, n_windows=8, degree=4):
 
 
 def _stct_single_scale(X, n_windows, degree, include_residual=True, orthonormal=False, adaptive_degree=False,
-                       resid_kind=None):
+                       resid_kind=None, resid_norm="rms"):
     X = np.asarray(X, dtype=float)
     n_samples, n = X.shape
     if adaptive_degree:
@@ -81,7 +92,7 @@ def _stct_single_scale(X, n_windows, degree, include_residual=True, orthonormal=
     coefs = windows @ pinv.T
     if include_residual:
         recon = coefs @ Phi.T
-        resid_rms = np.sqrt(((windows - recon) ** 2).mean(axis=-1, keepdims=True))
+        resid_rms = _residual_norm(windows - recon, resid_norm)[..., None]
         block = np.concatenate([coefs, resid_rms], axis=-1)
         if resid_kind:
             extra = _residual_measure(windows - recon, resid_kind)[..., None]
@@ -95,9 +106,9 @@ def _stct_single_scale(X, n_windows, degree, include_residual=True, orthonormal=
 
 
 def stct_fixed(X, window_counts=(8, 16), degree=4, include_residual=True, orthonormal=False, adaptive_degree=False,
-               resid_kind=None):
+               resid_kind=None, resid_norm="rms"):
     """Original STCT features (paper default: degree 4, 8 and 16 windows)."""
-    parts = [_stct_single_scale(X, nw, degree, include_residual, orthonormal, adaptive_degree, resid_kind)
+    parts = [_stct_single_scale(X, nw, degree, include_residual, orthonormal, adaptive_degree, resid_kind, resid_norm)
              for nw in window_counts]
     return np.concatenate(parts, axis=1)
 
@@ -147,7 +158,7 @@ def stct_ladder(X, counts=LADDER_COUNTS, degree=4, orthonormal=False, adaptive_d
 # --------------------------------------------------------------------------
 
 
-def _windowed_coefficients(X, win_len, degree, stride=1, max_block_elems=1_000_000, orthonormal=False):
+def _windowed_coefficients(X, win_len, degree, stride=1, max_block_elems=1_000_000, orthonormal=False, resid_norm="rms"):
     """Coefficients and residual RMS for windows starting every ``stride`` samples.
 
     Returns (n_samples, degree + 2, n_windows).  Each block is projected onto an
@@ -172,9 +183,12 @@ def _windowed_coefficients(X, win_len, degree, stride=1, max_block_elems=1_000_0
         W = X[s : s + block][:, idx]
         proj = W @ Q
         coefs = proj if orthonormal else proj @ RinvT
-        energy = (W * W).sum(axis=-1) - (proj * proj).sum(axis=-1)
         out[s : s + block, : degree + 1] = coefs.transpose(0, 2, 1)
-        out[s : s + block, degree + 1] = np.sqrt(np.maximum(energy, 0.0) / L)
+        if resid_norm == "rms":
+            energy = (W * W).sum(axis=-1) - (proj * proj).sum(axis=-1)
+            out[s : s + block, degree + 1] = np.sqrt(np.maximum(energy, 0.0) / L)
+        else:
+            out[s : s + block, degree + 1] = _residual_norm(W - proj @ Q.T, resid_norm)
     return out
 
 
@@ -256,7 +270,7 @@ def _second_order(Cx, degree=2):
 
 def stct_pooled(X, fractions=POOL_FRACTIONS, degree=4, stats=POOL_STATS, overlap=8, orthonormal=False,
                 shape=False, energy=False, cross=False, second=False, adaptive_degree=False, sample_windows=(),
-                resid_kind=None):
+                resid_kind=None, resid_norm="rms"):
     """Sliding STCT at window lengths given as fractions of the series length.
 
     Windows slide with stride window // overlap, and each channel time course
@@ -277,7 +291,7 @@ def stct_pooled(X, fractions=POOL_FRACTIONS, degree=4, stats=POOL_STATS, overlap
     parts = []
     for L in lengths:
         deg = _scale_degree(L) if adaptive_degree else degree
-        Cx = _windowed_coefficients(X, L, deg, max(1, L // overlap), orthonormal=orthonormal)
+        Cx = _windowed_coefficients(X, L, deg, max(1, L // overlap), orthonormal=orthonormal, resid_norm=resid_norm)
         pooled = _pool(_shape_normalise(Cx) if shape else Cx, stats)
         if "ppv" in stats:
             ch = Cx.shape[1]
@@ -345,7 +359,8 @@ def level_quantiles(X, counts=PRIMES[1:7], degree=4, orthonormal=False):
 def stct_plus(X, counts=LADDER_COUNTS, degree=4, fractions=POOL_FRACTIONS, stats=POOL_STATS, overlap=8,
               orthonormal=False, shape=False, energy=False, cross=False, second=False, spectrum=False,
               spectrum_counts=PRIMES[:4], global_q=False, window_q=False, level_q=False,
-              adaptive_degree=False, sample_windows=(), paper=False, resid_kind=None, znorm=False):
+              adaptive_degree=False, sample_windows=(), paper=False, resid_kind=None, znorm=False,
+              paper_counts=(8, 16), pool_degree=None, resid_norm="rms"):
     """Prime ladder or paper features (``paper=True``) + pooled statistics, plus optional candidate blocks.
 
     ``spectrum`` applies the same fit to frequency bands instead of time windows.
@@ -354,11 +369,11 @@ def stct_plus(X, counts=LADDER_COUNTS, degree=4, fractions=POOL_FRACTIONS, stats
     X = np.asarray(X, dtype=float)
     if znorm:
         X = (X - X.mean(axis=1, keepdims=True)) / (X.std(axis=1, keepdims=True) + 1e-8)
-    first = (stct_fixed(X, (8, 16), degree, True, orthonormal, adaptive_degree, resid_kind) if paper
+    first = (stct_fixed(X, paper_counts, degree, True, orthonormal, adaptive_degree, resid_kind, resid_norm) if paper
              else stct_ladder(X, counts, degree, orthonormal, adaptive_degree))
     parts = [first,
-             stct_pooled(X, fractions, degree, stats, overlap, orthonormal, shape, energy, cross, second,
-                         adaptive_degree, sample_windows, resid_kind)]
+             stct_pooled(X, fractions, degree if pool_degree is None else pool_degree, stats, overlap, orthonormal,
+                         shape, energy, cross, second, adaptive_degree, sample_windows, resid_kind, resid_norm)]
     if spectrum:
         parts.append(stct_ladder(log_periodogram(X), spectrum_counts, degree, orthonormal))
     if global_q:
@@ -440,6 +455,22 @@ if __name__ == "__main__":
                    dict(spectrum=True, global_q=True, window_q=True, level_q=True),
                    dict(fractions=(1 / 8, 1 / 4), sample_windows=(8, 32)), dict(sample_windows=(16,))):
             assert np.isfinite(stct_plus(S, paper=True, **kw)).all(), (T, kw)
+    # settings: defaults must be unchanged, and each residual norm must match a direct fit
+    assert np.allclose(stct_plus(X, paper=True), np.hstack([stct_fixed(X), stct_pooled(X)]))
+    Cm = _windowed_coefficients(X, 25, 4, 1, resid_norm="mae")
+    Cz = _windowed_coefficients(X, 25, 4, 1, resid_norm="max")
+    w = X[:, 40:65]
+    r = w - (w @ pinv.T) @ Phi.T
+    assert np.allclose(Cm[:, 5, 40], np.abs(r).mean(axis=1)) and np.allclose(Cz[:, 5, 40], np.abs(r).max(axis=1))
+    assert np.allclose(_windowed_coefficients(X, 25, 4, 1)[:, 5, 40], np.sqrt((r**2).mean(axis=1)))
+    assert stct_fixed(X, (4, 8, 16, 32)).shape[1] == 60 * 6
+    assert stct_plus(X, paper=True, pool_degree=2).shape[1] < stct_plus(X, paper=True).shape[1]
+    for T in (15, 24, 84, 601, 2000):
+        Sx = rng.standard_normal((4, T)).cumsum(axis=1)
+        for kw in (dict(paper_counts=(4, 8, 16, 32)), dict(degree=6), dict(degree=2), dict(pool_degree=6), dict(pool_degree=1),
+                   dict(overlap=32), dict(resid_norm="mae"), dict(resid_norm="max"),
+                   dict(fractions=(1 / 128, 1 / 64, 1 / 32, 1 / 16, 1 / 8, 1 / 4))):
+            assert np.isfinite(stct_plus(Sx, paper=True, **kw)).all(), (T, kw)
     # residual measures: an alternating signal changes sign at every step and has a peak ratio of 1
     alt = np.array([[1.0, -1.0] * 8])
     assert _residual_measure(alt, "sign")[0] == 1.0 and np.isclose(_residual_measure(alt, "peak")[0], 1.0)

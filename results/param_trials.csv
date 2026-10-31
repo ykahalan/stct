@@ -1,0 +1,44 @@
+stage,axis,value,features,acc_gain,acc_better,acc_worse,rmse_ratio,rmse_better,rmse_worse,win,simpler
+features,paper_counts,"(8,)",284,-0.00161,36,47,1.0029,11,15,False,False
+features,paper_counts,"(16,)",332,-0.00294,36,41,1.0002,11,15,False,False
+features,paper_counts,"(4, 8)",308,-0.00087,37,38,1.004,12,14,False,False
+features,paper_counts,"(16, 32)",524,-0.00273,26,50,0.9977,13,12,False,False
+features,paper_counts,"(4, 8, 16)",404,-0.00168,40,38,0.9985,14,12,False,False
+features,paper_counts,"(8, 16, 32)",572,-0.00335,30,51,0.9955,13,13,False,False
+features,paper_counts,"(2, 4, 8, 16)",416,-0.00318,36,45,0.9978,15,11,False,False
+features,paper_counts,"(4, 8, 16, 32)",596,-0.00198,41,37,0.9943,14,12,False,False
+features,degree,2,332,0.00048,42,39,1.003,10,16,False,False
+features,degree,3,356,-0.00016,40,37,1.0004,14,12,False,False
+features,degree,5,404,-0.00052,41,34,1.0018,12,14,False,False
+features,degree,6,428,0.00045,37,45,0.9983,12,14,False,False
+features,fractions,"(0.0625, 0.125, 0.25)",321,-0.00533,18,41,1.0285,8,15,False,False
+features,fractions,"(0.015625, 0.03125, 0.0625, 0.125, 0.25)",439,0.00291,32,17,0.9957,12,9,False,False
+features,fractions,"(0.03125, 0.0625, 0.125, 0.25, 0.5)",439,-0.00129,35,38,0.9987,11,15,False,False
+features,fractions,"(0.015625, 0.03125, 0.0625, 0.125, 0.25, 0.5)",498,0.00233,43,36,0.9959,15,11,False,False
+features,fractions,"(0.0078125, 0.015625, 0.03125, 0.0625, 0.125, 0.25)",498,0.00434,36,21,0.9959,13,9,True,False
+features,overlap,2,498,-0.01533,16,68,1.0374,8,18,False,False
+features,overlap,4,498,-0.00568,22,48,1.0173,10,15,False,False
+features,overlap,16,498,0.00054,42,31,1.0131,11,14,False,False
+features,overlap,32,498,0.00313,42,33,1.0073,11,13,False,False
+features,pool_degree,1,318,-0.00768,32,52,0.9993,16,10,False,False
+features,pool_degree,2,378,-0.00193,36,46,1.001,15,11,False,False
+features,pool_degree,3,438,-0.0013,38,46,1.012,15,11,False,False
+features,pool_degree,5,558,-0.00265,34,40,1.009,7,19,False,False
+features,stats,"('mean', 'std', 'min', 'max', 'q25', 'q50', 'q75', 'ppv')",426,0.00068,39,39,1.018,15,11,False,False
+features,stats,"('mean', 'std', 'min', 'max')",288,-0.00983,21,59,1.0513,10,16,False,False
+features,stats,"('mean', 'std', 'min', 'max', 'argmax', 'argmin')",360,-0.0067,27,58,1.0365,10,16,False,False
+features,stats,"('mean', 'std', 'min', 'max', 'q10', 'q25', 'q50', 'q75', 'q90', 'ppv', 'argmax', 'argmin')",570,0.00248,51,25,0.9996,15,11,False,False
+features,resid_norm,mae,498,8e-05,34,39,1.0039,10,16,False,False
+features,resid_norm,max,498,-0.00055,35,35,1.0021,9,17,False,False
+classification,max_features,0.1,0.00353,46,33,True
+classification,max_features,0.25,0.00256,51,30,False
+classification,max_features,0.5,0.00022,51,31,False
+classification,criterion,entropy,0.00022,38,37,False
+classification,min_samples_leaf,2,-0.00783,24,49,False
+classification,min_samples_leaf,3,-0.0169,14,72,False
+regression,max_features,sqrt,1.07316,10,16,False
+regression,max_features,0.1,1.04752,9,17,False
+regression,max_features,0.25,1.0138,10,16,False
+regression,max_features,0.5,1.00613,11,15,False
+regression,min_samples_leaf,2,0.99899,14,12,False
+regression,min_samples_leaf,3,1.02068,13,13,False

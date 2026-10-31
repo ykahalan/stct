@@ -1,0 +1,66 @@
+{
+  "config": {
+    "paper_counts": [
+      8,
+      16
+    ],
+    "degree": 4,
+    "fractions": [
+      0.0078125,
+      0.015625,
+      0.03125,
+      0.0625,
+      0.125,
+      0.25
+    ],
+    "overlap": 8,
+    "pool_degree": 4,
+    "stats": [
+      "mean",
+      "std",
+      "min",
+      "max",
+      "q25",
+      "q50",
+      "q75",
+      "ppv",
+      "argmax",
+      "argmin"
+    ],
+    "resid_norm": "rms"
+  },
+  "learners": {
+    "classification": {
+      "max_features": 0.1,
+      "criterion": "gini",
+      "min_samples_leaf": 1
+    },
+    "regression": {
+      "max_features": 1.0,
+      "min_samples_leaf": 1
+    }
+  },
+  "features": 498,
+  "start_accuracy": 0.8390448466196979,
+  "final_accuracy": 0.8469184571803823,
+  "rechecks": [
+    {
+      "seed": 1,
+      "classification_metric": 0.01012,
+      "classification_better": 56,
+      "classification_worse": 24,
+      "regression_metric": 1.00443,
+      "regression_better": 7,
+      "regression_worse": 15
+    },
+    {
+      "seed": 2,
+      "classification_metric": 0.00961,
+      "classification_better": 54,
+      "classification_worse": 21,
+      "regression_metric": 0.99644,
+      "regression_better": 13,
+      "regression_worse": 8
+    }
+  ]
+}

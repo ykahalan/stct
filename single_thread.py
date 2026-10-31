@@ -35,10 +35,10 @@ def trees(cls, **kw):
     return (ExtraTreesClassifier if cls else ExtraTreesRegressor)(n_estimators=500, random_state=bench.RNG, n_jobs=1, **kw)
 
 
-def run_stct(fn, Xtr, ytr, Xte, cls):
+def run_stct(fn, Xtr, ytr, Xte, cls, **tree_kw):
     t = time.perf_counter()
     Ftr, Fte = np.nan_to_num(fn(Xtr)), np.nan_to_num(fn(Xte))
-    pred = trees(cls).fit(Ftr, ytr).predict(Fte)
+    pred = trees(cls, **tree_kw).fit(Ftr, ytr).predict(Fte)
     return pred, time.perf_counter() - t, Ftr.shape[1]
 
 
@@ -87,6 +87,9 @@ def main():
                    "paper_pooled": lambda *x: run_stct(lambda X: SP.stct_plus(X, paper=True), *x),
                    "paper_plus": lambda *x: run_stct(
                        lambda X: SP.stct_plus(X, paper=True, resid_kind="peak", global_q=True), *x),
+                   "paper_tuned": lambda *x: run_stct(
+                       lambda X: SP.stct_plus(X, paper=True, fractions=(1 / 128, 1 / 64, 1 / 32, 1 / 16, 1 / 8, 1 / 4)),
+                       *x, max_features=0.1 if x[-1] else 1.0),
                    "fixed": lambda *x: run_stct(SP.stct_fixed, *x),
                    "minirocket": run_minirocket}
         if cls:
