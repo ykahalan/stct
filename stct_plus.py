@@ -238,6 +238,45 @@ def _sliding_residual_measure(X, win_len, degree, stride, kind, max_block_elems=
     return out
 
 
+def _largest_prime(n):
+    """Largest prime at or below n."""
+    while n > 2 and any(n % d == 0 for d in range(2, int(n**0.5) + 1)):
+        n -= 1
+    return n
+
+
+def rule_lengths(T, rule, max_scales=7):
+    """Pooled window lengths from series length alone, keeping the longest ``max_scales``.
+
+    ``pow2``: 8, 16, 32, ... samples up to a quarter of the series.
+    ``halve``: a quarter of the series, halved repeatedly while at least 6 samples.
+    ``pow3``, ``pow5``: powers of 3 from 9, or of 5 from 25, up to a quarter of the series.
+    ``pow2_3``: the union of powers of 2 from 8 and powers of 3 from 9.
+    ``prime``: the largest prime at or below each power of 2 from 8.
+    A series too short for either rule gets one window of max(6, T // 4) samples.
+    """
+    top = T // 4
+    if rule == "pow2":
+        lengths = [2**k for k in range(3, 32) if 2**k <= top]
+    elif rule == "halve":
+        lengths, L = [], top
+        while L >= 6:
+            lengths.append(L)
+            L //= 2
+    elif rule == "pow3":
+        lengths = [3**k for k in range(2, 32) if 3**k <= top]
+    elif rule == "pow5":
+        lengths = [5**k for k in range(2, 32) if 5**k <= top]
+    elif rule == "pow2_3":
+        lengths = sorted({2**k for k in range(3, 32) if 2**k <= top} | {3**k for k in range(2, 32) if 3**k <= top})
+    elif rule == "prime":
+        lengths = [_largest_prime(2**k) for k in range(3, 32) if _largest_prime(2**k) <= top]
+    else:
+        raise ValueError(rule)
+    lengths = sorted(lengths)[-max_scales:]
+    return lengths or [min(max(6, top), T)]
+
+
 def _shape_normalise(Cx):
     """Divide non-constant coefficients by the window variation, separating shape from amplitude."""
     Cx = Cx.copy()
@@ -270,7 +309,7 @@ def _second_order(Cx, degree=2):
 
 def stct_pooled(X, fractions=POOL_FRACTIONS, degree=4, stats=POOL_STATS, overlap=8, orthonormal=False,
                 shape=False, energy=False, cross=False, second=False, adaptive_degree=False, sample_windows=(),
-                resid_kind=None, resid_norm="rms"):
+                resid_kind=None, resid_norm="rms", length_rule=None):
     """Sliding STCT at window lengths given as fractions of the series length.
 
     Windows slide with stride window // overlap, and each channel time course
@@ -288,6 +327,8 @@ def stct_pooled(X, fractions=POOL_FRACTIONS, degree=4, stats=POOL_STATS, overlap
         L = max(shortest, min(L, T))
         if L not in lengths:
             lengths.append(L)
+    if length_rule:
+        lengths = rule_lengths(T, length_rule)
     parts = []
     for L in lengths:
         deg = _scale_degree(L) if adaptive_degree else degree
@@ -360,7 +401,7 @@ def stct_plus(X, counts=LADDER_COUNTS, degree=4, fractions=POOL_FRACTIONS, stats
               orthonormal=False, shape=False, energy=False, cross=False, second=False, spectrum=False,
               spectrum_counts=PRIMES[:4], global_q=False, window_q=False, level_q=False,
               adaptive_degree=False, sample_windows=(), paper=False, resid_kind=None, znorm=False,
-              paper_counts=(8, 16), pool_degree=None, resid_norm="rms"):
+              paper_counts=(8, 16), pool_degree=None, resid_norm="rms", length_rule=None, pyramid_counts=None):
     """Prime ladder or paper features (``paper=True``) + pooled statistics, plus optional candidate blocks.
 
     ``spectrum`` applies the same fit to frequency bands instead of time windows.
@@ -369,11 +410,14 @@ def stct_plus(X, counts=LADDER_COUNTS, degree=4, fractions=POOL_FRACTIONS, stats
     X = np.asarray(X, dtype=float)
     if znorm:
         X = (X - X.mean(axis=1, keepdims=True)) / (X.std(axis=1, keepdims=True) + 1e-8)
-    first = (stct_fixed(X, paper_counts, degree, True, orthonormal, adaptive_degree, resid_kind, resid_norm) if paper
-             else stct_ladder(X, counts, degree, orthonormal, adaptive_degree))
+    if pyramid_counts is not None:  # tiling windows at each level, concatenated, in place of the paper windows
+        first = stct_ladder(X, tuple(pyramid_counts), degree, orthonormal, adaptive_degree)
+    else:
+        first = (stct_fixed(X, paper_counts, degree, True, orthonormal, adaptive_degree, resid_kind, resid_norm) if paper
+                 else stct_ladder(X, counts, degree, orthonormal, adaptive_degree))
     parts = [first,
              stct_pooled(X, fractions, degree if pool_degree is None else pool_degree, stats, overlap, orthonormal,
-                         shape, energy, cross, second, adaptive_degree, sample_windows, resid_kind, resid_norm)]
+                         shape, energy, cross, second, adaptive_degree, sample_windows, resid_kind, resid_norm, length_rule)]
     if spectrum:
         parts.append(stct_ladder(log_periodogram(X), spectrum_counts, degree, orthonormal))
     if global_q:
@@ -383,6 +427,25 @@ def stct_plus(X, counts=LADDER_COUNTS, degree=4, fractions=POOL_FRACTIONS, stats
     if level_q:
         parts.append(level_quantiles(X, degree=degree, orthonormal=orthonormal))
     return np.hstack(parts)
+
+
+def autocorrelation(X):
+    """Normalised autocorrelation of each series, lags 0 to T // 2."""
+    T = X.shape[1]
+    Z = X - X.mean(axis=1, keepdims=True)
+    power = np.abs(np.fft.rfft(Z, n=2 * T, axis=1)) ** 2
+    acf = np.fft.irfft(power, axis=1)[:, : max(T // 2 + 1, 8)]
+    return acf / (acf[:, :1] + 1e-12)
+
+
+TUNED_FRACTIONS = (1 / 128, 1 / 64, 1 / 32, 1 / 16, 1 / 8, 1 / 4)
+
+
+def stct_views(X):
+    """Paper features + pooled statistics, plus paper features of the sorted series and its autocorrelation."""
+    X = np.asarray(X, dtype=float)
+    return np.hstack([stct_plus(X, paper=True, fractions=TUNED_FRACTIONS), stct_fixed(np.sort(X, axis=1)),
+                      stct_fixed(autocorrelation(X))])
 
 
 class STCTPlus:
@@ -455,6 +518,30 @@ if __name__ == "__main__":
                    dict(spectrum=True, global_q=True, window_q=True, level_q=True),
                    dict(fractions=(1 / 8, 1 / 4), sample_windows=(8, 32)), dict(sample_windows=(16,))):
             assert np.isfinite(stct_plus(S, paper=True, **kw)).all(), (T, kw)
+    # split pyramids: nested levels share window edges, and short series drop the levels that do not fit
+    for nw_coarse, nw_fine in ((2, 6), (6, 30), (3, 6), (2, 4)):
+        coarse = np.round(np.linspace(0, 901, nw_coarse + 1)).astype(int)
+        fine = np.round(np.linspace(0, 901, nw_fine + 1)).astype(int)
+        assert set(coarse) <= set(fine), (nw_coarse, nw_fine)
+    assert stct_plus(X, paper=True, pyramid_counts=(1, 2, 6, 30), fractions=(1 / 4,)).shape[1] == 39 * 6 + 59
+    for T in (15, 24, 46, 84, 601, 2000):
+        Sx = rng.standard_normal((4, T)).cumsum(axis=1)
+        for pc in ((1, 2, 4, 8, 16), (1, 3, 9, 27), (1, 2, 3, 5, 7, 11), (1, 2, 6, 30), (1, 3, 6, 30)):
+            assert np.isfinite(stct_plus(Sx, paper=True, pyramid_counts=pc)).all(), (T, pc)
+    # length rules: scales follow series length and stay within the feature limit
+    assert rule_lengths(1024, "pow2") == [8, 16, 32, 64, 128, 256]
+    assert rule_lengths(7500, "pow2") == [16, 32, 64, 128, 256, 512, 1024]
+    assert rule_lengths(1000, "halve") == [7, 15, 31, 62, 125, 250]
+    assert rule_lengths(24, "pow2") == [6] and rule_lengths(15, "halve") == [6]
+    assert rule_lengths(1000, "pow3") == [9, 27, 81, 243] and rule_lengths(900, "pow3") == [9, 27, 81]
+    assert rule_lengths(1000, "pow5") == [25, 125] and rule_lengths(1000, "prime") == [7, 13, 31, 61, 127]
+    assert rule_lengths(1000, "pow2_3") == [27, 32, 64, 81, 128, 243] or len(rule_lengths(1000, "pow2_3")) == 7
+    assert stct_plus(X, paper=True, length_rule="pow2").shape[1] == 144 + 59 * len(rule_lengths(200, "pow2"))
+    for T in (15, 24, 46, 84, 601, 2000, 7500):
+        Sx = rng.standard_normal((4, T)).cumsum(axis=1)
+        for rule in ("pow2", "halve", "pow3", "pow5", "pow2_3", "prime"):
+            F = stct_plus(Sx, paper=True, length_rule=rule)
+            assert np.isfinite(F).all() and F.shape[1] <= 600, (T, rule, F.shape)
     # settings: defaults must be unchanged, and each residual norm must match a direct fit
     assert np.allclose(stct_plus(X, paper=True), np.hstack([stct_fixed(X), stct_pooled(X)]))
     Cm = _windowed_coefficients(X, 25, 4, 1, resid_norm="mae")

@@ -8,6 +8,7 @@
 | fixed:et             |        112 |  0.7967 |      9.3125 |      11 | 13/88 p=0.000 | 15/89 p=0.000 |
 | paper_pooled:et      |        112 |  0.8448 |      7.8304 |      11 | 13/81 p=0.000 | 21/78 p=0.000 |
 | paper_tuned:et_tuned |        112 |  0.853  |      7.1339 |      10 | 19/78 p=0.000 | 25/71 p=0.000 |
+| paper_views:et_tuned |        112 |  0.8563 |      7.1384 |      10 | 19/77 p=0.000 | 27/71 p=0.000 |
 | minirocket:ridge     |        112 |  0.8597 |      6.6652 |       8 | 20/76 p=0.000 | 26/67 p=0.000 |
 
 Published methods alone, mean rank: HC2 4.0, MR-Hydra 4.7, MultiROCKET 5.0, InceptionTime 5.9, RDST 5.9, QUANT 6.0, ROCKET 6.0, MiniROCKET 6.3, WEASEL-2.0 6.3, FreshPRINCE 7.2, Catch22 10.1, 1NN-DTW 10.7
@@ -20,6 +21,7 @@ Published methods alone, mean rank: HC2 4.0, MR-Hydra 4.7, MultiROCKET 5.0, Ince
 | fixed:et             |         74 |  0.7665 |      9.3243 |      11 | 8/61 p=0.000  | 11/59 p=0.000 |
 | paper_pooled:et      |         74 |  0.8223 |      7.7973 |      11 | 7/57 p=0.000  | 16/52 p=0.000 |
 | paper_tuned:et_tuned |         74 |  0.8323 |      6.8311 |       7 | 13/52 p=0.000 | 21/46 p=0.008 |
+| paper_views:et_tuned |         74 |  0.836  |      6.8784 |       7 | 13/52 p=0.000 | 22/46 p=0.013 |
 | minirocket:ridge     |         74 |  0.8325 |      6.8851 |       7 | 12/56 p=0.000 | 18/47 p=0.001 |
 
 Published methods alone, mean rank: HC2 3.8, MR-Hydra 4.6, MultiROCKET 4.9, QUANT 5.6, RDST 5.7, InceptionTime 6.1, ROCKET 6.5, MiniROCKET 6.5, WEASEL-2.0 6.6, FreshPRINCE 7.0, Catch22 9.7, 1NN-DTW 10.9
@@ -33,3 +35,4 @@ Published methods alone, mean rank: HC2 3.8, MR-Hydra 4.6, MultiROCKET 4.9, QUAN
 | minirocket:ridge     |    9996    |     3.34 |       0.61 |
 | paper_pooled:et      |     359.35 |     0.83 |       0.59 |
 | paper_tuned:et_tuned |     422.93 |     1.12 |       0.67 |
+| paper_views:et_tuned |     686.31 |     1.86 |       0.95 |

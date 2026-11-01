@@ -6,23 +6,24 @@
 
 |                      |   mean |   mean_rank |   best_on |
 |:---------------------|-------:|------------:|----------:|
-| HC2                  | 0.8764 |      4.9598 |        10 |
-| MR-Hydra             | 0.868  |      5.8125 |         9 |
-| MultiROCKET          | 0.8657 |      6.2634 |         2 |
-| RDST                 | 0.8631 |      7.5446 |         7 |
-| QUANT                | 0.8544 |      7.6339 |         7 |
-| ROCKET               | 0.8558 |      7.7768 |         3 |
-| InceptionTime        | 0.8578 |      7.8125 |        15 |
-| minirocket:ridge     | 0.8597 |      7.8839 |         0 |
-| WEASEL-2.0           | 0.8605 |      8.0179 |         7 |
-| MiniROCKET           | 0.858  |      8.0402 |         0 |
-| paper_tuned:et_tuned | 0.853  |      8.4107 |         4 |
-| FreshPRINCE          | 0.8416 |      9.4821 |         9 |
-| paper_pooled:et      | 0.8448 |      9.558  |         0 |
-| fixed:et             | 0.7967 |     11.8125 |         0 |
-| fixed:rf             | 0.7816 |     13.2098 |         0 |
-| Catch22              | 0.7814 |     13.9821 |         0 |
-| 1NN-DTW              | 0.7421 |     14.7991 |         1 |
+| HC2                  | 0.8764 |      5.2009 |        10 |
+| MR-Hydra             | 0.868  |      6.1161 |         9 |
+| MultiROCKET          | 0.8657 |      6.625  |         2 |
+| RDST                 | 0.8631 |      7.942  |         7 |
+| QUANT                | 0.8544 |      8.0848 |         7 |
+| ROCKET               | 0.8558 |      8.2054 |         3 |
+| InceptionTime        | 0.8578 |      8.25   |        15 |
+| minirocket:ridge     | 0.8597 |      8.2679 |         0 |
+| MiniROCKET           | 0.858  |      8.433  |         0 |
+| WEASEL-2.0           | 0.8605 |      8.4554 |         7 |
+| paper_views:et_tuned | 0.8563 |      8.9196 |         0 |
+| paper_tuned:et_tuned | 0.853  |      8.9375 |         4 |
+| FreshPRINCE          | 0.8416 |     10.1071 |         8 |
+| paper_pooled:et      | 0.8448 |     10.2054 |         0 |
+| fixed:et             | 0.7967 |     12.6071 |         0 |
+| fixed:rf             | 0.7816 |     14.0759 |         0 |
+| Catch22              | 0.7814 |     14.8705 |         0 |
+| 1NN-DTW              | 0.7421 |     15.6964 |         1 |
 
 ## Pairwise: each STCT variant vs each reference (wins/ties/losses on accuracy, Wilcoxon p)
 
@@ -76,6 +77,18 @@
 | paper_tuned:et_tuned | WEASEL-2.0    |     40 |     13 |       59 |       0.038  |     -0.0075 |
 | paper_tuned:et_tuned | Catch22       |     94 |      9 |        9 |       0      |      0.0716 |
 | paper_tuned:et_tuned | 1NN-DTW       |     98 |      6 |        8 |       0      |      0.1109 |
+| paper_views:et_tuned | HC2           |     19 |     16 |       77 |       0      |     -0.0201 |
+| paper_views:et_tuned | MR-Hydra      |     27 |     14 |       71 |       0      |     -0.0118 |
+| paper_views:et_tuned | InceptionTime |     43 |     12 |       57 |       0.1061 |     -0.0015 |
+| paper_views:et_tuned | MultiROCKET   |     35 |     11 |       66 |       0.0005 |     -0.0094 |
+| paper_views:et_tuned | MiniROCKET    |     36 |     16 |       60 |       0.1638 |     -0.0018 |
+| paper_views:et_tuned | ROCKET        |     42 |     12 |       58 |       0.1247 |      0.0005 |
+| paper_views:et_tuned | FreshPRINCE   |     63 |     14 |       35 |       0.0091 |      0.0147 |
+| paper_views:et_tuned | RDST          |     39 |     11 |       62 |       0.0345 |     -0.0068 |
+| paper_views:et_tuned | QUANT         |     42 |     17 |       53 |       0.4047 |      0.0019 |
+| paper_views:et_tuned | WEASEL-2.0    |     44 |     10 |       58 |       0.0586 |     -0.0042 |
+| paper_views:et_tuned | Catch22       |     96 |      7 |        9 |       0      |      0.0749 |
+| paper_views:et_tuned | 1NN-DTW       |     97 |      7 |        8 |       0      |      0.1142 |
 | minirocket:ridge     | HC2           |     20 |     16 |       76 |       0      |     -0.0167 |
 | minirocket:ridge     | MR-Hydra      |     26 |     19 |       67 |       0      |     -0.0083 |
 | minirocket:ridge     | InceptionTime |     50 |     16 |       46 |       0.9592 |      0.0019 |
@@ -96,10 +109,15 @@
 | fixed:rf             | fixed:et             |       18 |     12 |       82 |       0      |
 | fixed:rf             | paper_pooled:et      |       15 |      8 |       89 |       0      |
 | fixed:rf             | paper_tuned:et_tuned |       13 |      9 |       90 |       0      |
+| fixed:rf             | paper_views:et_tuned |       10 |     10 |       92 |       0      |
 | fixed:rf             | minirocket:ridge     |       15 |     11 |       86 |       0      |
 | fixed:et             | paper_pooled:et      |       21 |     13 |       78 |       0      |
 | fixed:et             | paper_tuned:et_tuned |       18 |     14 |       80 |       0      |
+| fixed:et             | paper_views:et_tuned |       15 |     16 |       81 |       0      |
 | fixed:et             | minirocket:ridge     |       23 |      9 |       80 |       0      |
 | paper_pooled:et      | paper_tuned:et_tuned |       24 |     27 |       61 |       0.0001 |
+| paper_pooled:et      | paper_views:et_tuned |       30 |     19 |       63 |       0      |
 | paper_pooled:et      | minirocket:ridge     |       30 |     19 |       63 |       0.0003 |
+| paper_tuned:et_tuned | paper_views:et_tuned |       42 |     22 |       48 |       0.2773 |
 | paper_tuned:et_tuned | minirocket:ridge     |       41 |     16 |       55 |       0.0344 |
+| paper_views:et_tuned | minirocket:ridge     |       36 |     14 |       62 |       0.0685 |

@@ -90,6 +90,7 @@ def main():
                    "paper_tuned": lambda *x: run_stct(
                        lambda X: SP.stct_plus(X, paper=True, fractions=(1 / 128, 1 / 64, 1 / 32, 1 / 16, 1 / 8, 1 / 4)),
                        *x, max_features=0.1 if x[-1] else 1.0),
+                   "paper_views": lambda *x: run_stct(SP.stct_views, *x, max_features=0.1 if x[-1] else 1.0),
                    "fixed": lambda *x: run_stct(SP.stct_fixed, *x),
                    "minirocket": run_minirocket}
         if cls:

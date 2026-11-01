@@ -6,24 +6,25 @@
 
 |                      |     mean |   mean_rank |   best_on |   mean_rel_rmse |   median_rel_rmse |
 |:---------------------|---------:|------------:|----------:|----------------:|------------------:|
-| paper_tuned:et_tuned |  112.212 |      5.1538 |         2 |          1.4623 |            1.208  |
-| paper_pooled:et      |  110.895 |      5.3077 |         0 |          1.4396 |            1.1932 |
-| DrCIF                |  105.584 |      5.8462 |         2 |          1.4426 |            1.2509 |
-| minirocket:ridge     |  124.082 |      5.8846 |         2 |          2.4688 |            1.235  |
-| fixed:et             |  113.553 |      6.3846 |         0 |          1.8228 |            1.2513 |
-| FreshPRINCE          |  123.212 |      7.1923 |         3 |          1.483  |            1.2363 |
-| InceptionTime        |  128.912 |      8.5385 |         3 |          1.7299 |            1.3369 |
-| RotF                 |  161.025 |      8.7692 |         5 |          2.5149 |            1.427  |
-| ROCKET               |  157.998 |      9      |         3 |          3.2573 |            1.3356 |
-| fixed:rf             |  138.324 |      9.2308 |         0 |          2.0896 |            1.3459 |
-| RandF                |  159.715 |     11.0385 |         0 |          2.0533 |            1.6122 |
-| Ridge                | 2220.62  |     11.1923 |         1 |         49.5059 |            1.4664 |
-| XGBoost              |  179.227 |     11.9231 |         0 |          2.3491 |            1.5915 |
-| GridSVR              |  219.129 |     11.9615 |         2 |          4.8173 |            1.5554 |
-| ResNet               |  242.422 |     12.6538 |         0 |          3.8001 |            1.5035 |
-| FPCR                 |  208.702 |     12.8846 |         0 |          3.0705 |            1.7579 |
-| 1NN-DTW              |  193.866 |     13.2692 |         0 |          2.2193 |            1.645  |
-| FCN                  |  290.396 |     14.7692 |         1 |          4.3964 |            2.547  |
+| paper_views:et_tuned |  105.089 |      5.2692 |         4 |          1.359  |            1.1512 |
+| paper_tuned:et_tuned |  112.212 |      5.7692 |         1 |          1.4724 |            1.208  |
+| paper_pooled:et      |  110.895 |      5.8846 |         0 |          1.4496 |            1.1932 |
+| minirocket:ridge     |  124.082 |      6.4615 |         2 |          2.4827 |            1.2486 |
+| DrCIF                |  105.584 |      6.4615 |         1 |          1.4575 |            1.2509 |
+| fixed:et             |  113.553 |      6.9615 |         0 |          1.8449 |            1.2513 |
+| FreshPRINCE          |  123.212 |      7.9615 |         2 |          1.4915 |            1.2507 |
+| InceptionTime        |  128.912 |      9.2308 |         3 |          1.7633 |            1.3369 |
+| RotF                 |  161.025 |      9.5385 |         5 |          2.529  |            1.4283 |
+| ROCKET               |  157.998 |      9.7692 |         3 |          3.3394 |            1.3356 |
+| fixed:rf             |  138.324 |     10.1154 |         0 |          2.1092 |            1.3492 |
+| Ridge                | 2220.62  |     11.8846 |         1 |         56.0684 |            1.4814 |
+| RandF                |  159.715 |     11.9231 |         0 |          2.0711 |            1.6122 |
+| GridSVR              |  219.129 |     12.8077 |         2 |          4.925  |            1.5554 |
+| XGBoost              |  179.227 |     12.8462 |         0 |          2.367  |            1.5915 |
+| ResNet               |  242.422 |     13.6154 |         0 |          3.9432 |            1.5035 |
+| FPCR                 |  208.702 |     13.6923 |         0 |          3.1871 |            1.7593 |
+| 1NN-DTW              |  193.866 |     14.1923 |         0 |          2.2579 |            1.6577 |
+| FCN                  |  290.396 |     15.6154 |         1 |          4.572  |            2.5766 |
 
 ## Pairwise: each STCT variant vs each reference (wins/ties/losses on RMSE, Wilcoxon p)
 
@@ -81,6 +82,19 @@
 | paper_tuned:et_tuned | GridSVR       |     22 |      0 |        4 |       0.0061 |   -106.917  |
 | paper_tuned:et_tuned | ResNet        |     24 |      0 |        2 |       0.0001 |   -130.211  |
 | paper_tuned:et_tuned | FCN           |     24 |      0 |        2 |       0      |   -178.185  |
+| paper_views:et_tuned | FreshPRINCE   |     20 |      0 |        6 |       0.0292 |    -18.1229 |
+| paper_views:et_tuned | DrCIF         |     16 |      0 |       10 |       0.5995 |     -0.4946 |
+| paper_views:et_tuned | InceptionTime |     18 |      0 |        8 |       0.4374 |    -23.8232 |
+| paper_views:et_tuned | ROCKET        |     20 |      0 |        6 |       0.0594 |    -52.9086 |
+| paper_views:et_tuned | RotF          |     20 |      0 |        6 |       0.0236 |    -55.9358 |
+| paper_views:et_tuned | Ridge         |     18 |      0 |        8 |       0.3032 |  -2115.53   |
+| paper_views:et_tuned | XGBoost       |     24 |      0 |        2 |       0.0004 |    -74.1377 |
+| paper_views:et_tuned | RandF         |     23 |      0 |        3 |       0.0007 |    -54.6262 |
+| paper_views:et_tuned | 1NN-DTW       |     24 |      0 |        2 |       0.0004 |    -88.777  |
+| paper_views:et_tuned | FPCR          |     21 |      0 |        5 |       0.0047 |   -103.613  |
+| paper_views:et_tuned | GridSVR       |     22 |      0 |        4 |       0.0047 |   -114.04   |
+| paper_views:et_tuned | ResNet        |     25 |      0 |        1 |       0      |   -137.333  |
+| paper_views:et_tuned | FCN           |     22 |      0 |        4 |       0.0002 |   -185.307  |
 | minirocket:ridge     | FreshPRINCE   |     15 |      0 |       11 |       0.5153 |      0.8698 |
 | minirocket:ridge     | DrCIF         |     15 |      0 |       11 |       0.5995 |     18.4981 |
 | minirocket:ridge     | InceptionTime |     19 |      0 |        7 |       0.3153 |     -4.8305 |
@@ -102,12 +116,17 @@
 | fixed:rf             | fixed:et             |        4 |      0 |       22 |       0.0005 |
 | fixed:rf             | paper_pooled:et      |        5 |      0 |       21 |       0.0024 |
 | fixed:rf             | paper_tuned:et_tuned |        4 |      0 |       22 |       0.0009 |
+| fixed:rf             | paper_views:et_tuned |        3 |      0 |       23 |       0.0004 |
 | fixed:rf             | minirocket:ridge     |        7 |      0 |       19 |       0.0151 |
 | fixed:et             | paper_pooled:et      |       12 |      0 |       14 |       0.8809 |
 | fixed:et             | paper_tuned:et_tuned |       11 |      0 |       15 |       0.9602 |
+| fixed:et             | paper_views:et_tuned |       11 |      0 |       15 |       0.6348 |
 | fixed:et             | minirocket:ridge     |        9 |      0 |       17 |       0.1651 |
 | paper_pooled:et      | paper_tuned:et_tuned |        8 |      8 |       10 |       0.9702 |
+| paper_pooled:et      | paper_views:et_tuned |       11 |      0 |       15 |       0.4227 |
 | paper_pooled:et      | minirocket:ridge     |       15 |      0 |       11 |       0.7454 |
+| paper_tuned:et_tuned | paper_views:et_tuned |       10 |      0 |       16 |       0.1651 |
 | paper_tuned:et_tuned | minirocket:ridge     |       15 |      0 |       11 |       0.8417 |
+| paper_views:et_tuned | minirocket:ridge     |       15 |      0 |       11 |       0.7265 |
 
 ## Mean rank is the headline for regression: raw RMSE is not comparable across datasets.

@@ -167,6 +167,7 @@ FEATURES = {
     "paper_pooled": _both(lambda X: SP.stct_plus(X, paper=True)),  # paper features + pooled statistics
     "paper_plus": _both(lambda X: SP.stct_plus(X, paper=True, resid_kind="peak", global_q=True)),  # as selected
     "paper_tuned": _both(lambda X: SP.stct_plus(X, paper=True, fractions=(1 / 128, 1 / 64, 1 / 32, 1 / 16, 1 / 8, 1 / 4))),  # chosen by param_search.py
+    "paper_views": _both(SP.stct_views),  # chosen by ablate.py
     "wavelet": _both(wavelet_features),
     "stft": _both(stft_features),
     "minirocket": feats_minirocket,
