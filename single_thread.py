@@ -42,6 +42,27 @@ def run_stct(fn, Xtr, ytr, Xte, cls, **tree_kw):
     return pred, time.perf_counter() - t, Ftr.shape[1]
 
 
+def run_vote(Xtr, ytr, Xte, cls):
+    """ExtraTrees on stct_views, averaged with ridge on kernels from length 128 up."""
+    import ablate
+    from vote_test import MIN_LENGTH, kernel_features
+
+    t = time.perf_counter()
+    Ftr, Fte = np.nan_to_num(SP.stct_views(Xtr)), np.nan_to_num(SP.stct_views(Xte))
+    et = trees(cls, max_features=0.1 if cls else 1.0).fit(Ftr, ytr)
+    n = Ftr.shape[1]
+    if Xtr.shape[1] < MIN_LENGTH:
+        return et.predict(Fte), time.perf_counter() - t, n
+    Ktr, Kte = (np.nan_to_num(F) for F in kernel_features(Xtr, Xte))
+    alphas = np.logspace(-3, 3, 10)
+    ridge = make_pipeline(StandardScaler(), RidgeClassifierCV(alphas=alphas) if cls else RidgeCV(alphas=alphas)).fit(Ktr, ytr)
+    if cls:
+        pred = et.classes_[(et.predict_proba(Fte) + ablate.soft(ridge.decision_function(Kte))).argmax(axis=1)]
+    else:
+        pred = (et.predict(Fte) + ridge.predict(Kte)) / 2
+    return pred, time.perf_counter() - t, n + Ktr.shape[1]
+
+
 def run_minirocket(Xtr, ytr, Xte, cls):
     from aeon.transformations.collection.convolution_based import MiniRocket
 
@@ -91,6 +112,7 @@ def main():
                        lambda X: SP.stct_plus(X, paper=True, fractions=(1 / 128, 1 / 64, 1 / 32, 1 / 16, 1 / 8, 1 / 4)),
                        *x, max_features=0.1 if x[-1] else 1.0),
                    "paper_views": lambda *x: run_stct(SP.stct_views, *x, max_features=0.1 if x[-1] else 1.0),
+                   "paper_vote": run_vote,
                    "fixed": lambda *x: run_stct(SP.stct_fixed, *x),
                    "minirocket": run_minirocket}
         if cls:

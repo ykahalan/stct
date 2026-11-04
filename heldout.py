@@ -15,12 +15,16 @@ import bench
 CONFIG = {
     "classification": dict(
         key="accuracy", dev=bench.DEV_UCR,
-        recipes=["fixed:rf", "fixed:et", "paper_pooled:et", "paper_tuned:et_tuned", "paper_views:et_tuned", "minirocket:ridge"],
+        recipes=["fixed:rf", "fixed:et", "paper_pooled:et", "paper_tuned:et_tuned", "paper_views:et_tuned",
+                 "paper_vote:et_ridge", "paper_fast:et_ridge", "paper_trio:et_ridge", "paper_dil:et_ridge",
+                 "paper_four:et_ridge", "paper_quant:et_ridge", "paper_quant2:et_ridge", "stct_plus:et_ridge",
+                 "minirocket:ridge"],
         refs=["HC2", "MR-Hydra", "MultiROCKET", "RDST", "WEASEL-2.0", "MiniROCKET", "InceptionTime", "ROCKET",
               "QUANT", "FreshPRINCE", "Catch22", "1NN-DTW"]),
     "regression": dict(
         key="rmse", dev=bench.DEV_TSER,
-        recipes=["fixed:rf", "fixed:et", "paper_pooled:et", "paper_tuned:et_tuned", "paper_views:et_tuned", "minirocket:ridge"],
+        recipes=["fixed:rf", "fixed:et", "paper_pooled:et", "paper_tuned:et_tuned", "paper_views:et_tuned",
+                 "paper_vote:et_ridge", "paper_fast:et_ridge", "minirocket:ridge"],
         refs=["DrCIF", "FreshPRINCE", "InceptionTime", "RotF", "ROCKET", "Ridge", "RandF", "XGBoost", "GridSVR",
               "ResNet", "FPCR", "1NN-DTW", "FCN"]),
 }

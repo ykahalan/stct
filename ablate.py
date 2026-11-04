@@ -25,6 +25,19 @@ Blocks, combined with "+":
     Ps      paper features of the sorted series (its value distribution)
     Pr      paper features of the autocorrelation function
     P2, D2  paper features or pooled statistics of the second difference
+    K64  K with 64 weightings per scale, or 32 on series shorter than 300
+    KT   K with one weighting per 8 samples of series length, 1 to 64 per scale
+    SQ   pooled statistics with q5, q10, q90 and q95 added, in place of S
+    Sd   pooled statistics of fits of degree 2 and 6, added to S
+    Sr   pooled statistics of the autocorrelation function
+    A|B  averages ExtraTrees on blocks A with ridge on blocks B
+    WG   paper windows + pooled statistics of a Chebyshev fit with Gaussian weights (window centre)
+    WH   the same with a Hann taper (window centre, reaching zero at the edges)
+    WC   the same with the Chebyshev weight 1 / sqrt(1 - x^2) (window edges)
+    WS   the same with exponential weights (window start)
+    WE   the same with exponential weights (window end)
+    N1, N4, Nm, Nh  residual L1, L4, maximum or L1/2 norm in paper windows and pooled statistics
+    Ns   the same with the scale-free residual ratios L1 / L2 and maximum / L2
     Wr   raw DWT coefficients, as in the paper notebooks
     Fr   raw STFT magnitudes, as in the paper notebooks
 
@@ -165,6 +178,105 @@ def kernel_fit(X, n_dir, seed):
     return params
 
 
+def basis_design(L, name, degree=DEGREE):
+    """Chebyshev design matrix and square-root weights of a window of L samples."""
+    x = np.linspace(-1, 1, L)
+    weights = {"WG": np.exp(-((2.5 * x) ** 2) / 2),
+               "WH": 0.5 * (1 + np.cos(np.pi * x)) + 1e-3,
+               "WC": 1 / np.sqrt(1 - np.minimum(x**2, 0.99)),
+               "WS": np.exp(-3 * (x + 1)),
+               "WE": np.exp(3 * (x - 1))}[name]
+    return C.chebvander(x, degree), np.sqrt(weights)
+
+
+def basis_windows(X, L, starts, name):
+    """Coefficients and residual RMS of a weighted fit at the given starts: (n, 6, windows)."""
+    Phi, w = basis_design(L, name)
+    pinv = np.linalg.pinv(Phi * w[:, None]) * w[None, :]  # (d + 1, L)
+    idx = np.asarray(starts)[:, None] + np.arange(L)[None, :]
+    out = np.empty((len(X), DEGREE + 2, len(starts)))
+    step = max(1, 1_000_000 // (len(starts) * L))
+    for s in range(0, len(X), step):
+        W = X[s : s + step][:, idx]
+        c = W @ pinv.T
+        out[s : s + step, : DEGREE + 1] = c.transpose(0, 2, 1)
+        out[s : s + step, DEGREE + 1] = np.sqrt(((W - c @ Phi.T) ** 2).mean(axis=-1))
+    return out
+
+
+def basis_block(X, name):
+    """Paper windows and pooled statistics, with the fit replaced by the named basis."""
+    T = X.shape[1]
+    parts = []
+    for n0 in (8, 16):
+        nw, _ = SP._safe_cheby_params(T, n0, DEGREE)
+        L = min(max(DEGREE + 2, T // nw), T)
+        step = max(1, (T - L) // max(1, nw - 1))
+        starts = list(range(0, T - L + 1, step))[:nw]
+        parts.append(basis_windows(X, L, starts, name).reshape(len(X), -1))
+    for L in window_lengths(T):
+        stride = max(1, L // OVERLAP)
+        starts = np.arange(0, T - L + 1, stride)
+        if starts[-1] != T - L:
+            starts = np.append(starts, T - L)
+        parts.append(pooled(basis_windows(X, L, starts, name)))
+    return np.hstack(parts)
+
+
+def residual_measures(R, name):
+    """Norms of the fit residuals along the last axis: (..., channels)."""
+    A = np.abs(R)
+    if name == "N1":
+        return A.mean(axis=-1)[..., None]
+    if name == "N4":
+        return ((A**4).mean(axis=-1) ** 0.25)[..., None]
+    if name == "Nm":
+        return A.max(axis=-1)[..., None]
+    if name == "Nh":
+        return (np.sqrt(A).mean(axis=-1) ** 2)[..., None]
+    if name == "Ns":
+        l2 = np.sqrt((A**2).mean(axis=-1)) + 1e-12
+        return np.stack([A.mean(axis=-1) / l2, A.max(axis=-1) / l2], axis=-1)
+    raise ValueError(name)
+
+
+def residual_windows(X, L, starts, names):
+    """Residual measures of the Chebyshev fit at the given starts: (n, channels, windows)."""
+    Phi = C.chebvander(np.linspace(-1, 1, L), DEGREE)
+    pinv = np.linalg.pinv(Phi)
+    idx = np.asarray(starts)[:, None] + np.arange(L)[None, :]
+    rows = []
+    step = max(1, 1_000_000 // (len(starts) * L))
+    for s in range(0, len(X), step):
+        W = X[s : s + step][:, idx]
+        R = W - (W @ pinv.T) @ Phi.T
+        rows.append(np.concatenate([residual_measures(R, n) for n in names], axis=-1).transpose(0, 2, 1))
+    return np.vstack(rows)
+
+
+def residual_block(X, names):
+    """The named residual measures in paper windows and as pooled statistics at each scale."""
+    T = X.shape[1]
+    parts = []
+    for n0 in (8, 16):
+        nw, _ = SP._safe_cheby_params(T, n0, DEGREE)
+        L = min(max(DEGREE + 2, T // nw), T)
+        step = max(1, (T - L) // max(1, nw - 1))
+        starts = list(range(0, T - L + 1, step))[:nw]
+        parts.append(residual_windows(X, L, starts, names).reshape(len(X), -1))
+    stats = tuple(st for st in SP.POOL_STATS if st != "ppv")
+    for L in window_lengths(T):
+        stride = max(1, L // OVERLAP)
+        starts = np.arange(0, T - L + 1, stride)
+        if starts[-1] != T - L:
+            starts = np.append(starts, T - L)
+        parts.append(SP._pool(residual_windows(X, L, starts, names), stats))
+    return np.hstack(parts)
+
+
+RICH_STATS = SP.POOL_STATS + ("q5", "q10", "q90", "q95")
+
+
 def transform(X, blocks, kparams):
     X = np.asarray(X, dtype=float)
     parts = [SP.stct_fixed(X)] if "P" in blocks else []
@@ -176,6 +288,14 @@ def transform(X, blocks, kparams):
         parts.append(SP.stct_fixed(cumulative(X)))
     if "Dc" in blocks:
         parts.append(SP.stct_pooled(cumulative(X), FRACTIONS))
+    for name in ("WG", "WH", "WC", "WS", "WE"):
+        if name in blocks:
+            parts.append(basis_block(X, name))
+    names = [n for n in ("N1", "N4", "Nm", "Nh", "Ns") if n in blocks]
+    if names:
+        parts.append(residual_block(X, names))
+    if "Sr" in blocks:
+        parts.append(SP.stct_pooled(SP.autocorrelation(X), FRACTIONS))
     if "Pa" in blocks:
         parts.append(SP.stct_fixed(np.abs(np.diff(X, axis=1))))
     if "Da" in blocks:
@@ -198,7 +318,7 @@ def transform(X, blocks, kparams):
         parts.append(bench.wavelet_features(X))
     if "Fr" in blocks:
         parts.append(bench.stft_features(X))
-    sliding = blocks & {"S", "SY", "C", "K", "KY", "K32", "H"}
+    sliding = blocks & {"S", "SY", "C", "K", "KY", "K32", "K64", "KT", "H", "SQ", "Sd"}
     if sliding:
         rows = []
         for s in range(0, len(X), BLOCK):
@@ -209,6 +329,13 @@ def transform(X, blocks, kparams):
                     feats.append(pooled(Cx))
                 if "SY" in blocks:
                     feats += [pooled(h) for h in halves(Cx)]
+                if "SQ" in blocks:
+                    F = SP._pool(Cx, RICH_STATS)
+                    feats.append(np.delete(F, RICH_STATS.index("ppv") * Cx.shape[1] + Cx.shape[1] - 1, axis=1))
+                if "Sd" in blocks:
+                    for deg in (2, 6):
+                        if L >= deg + 2:
+                            feats.append(pooled(SP._windowed_coefficients(Xb, L, deg, max(1, L // OVERLAP))))
                 if "C" in blocks:
                     feats.append(SP._cross_correlation(Cx))
                 if "H" in blocks:
@@ -230,13 +357,63 @@ def parse(config):
 
 
 def features(X, config, seed):
+    if "|" in config:
+        return np.hstack([features(X, part, seed) for part in config.split("|")])
     blocks, _ = parse(config)
-    n_dir = 32 if "K32" in blocks else 8
-    kp = kernel_fit(X, n_dir, seed) if blocks & {"K", "KY", "K32"} else None
+    n_dir = (64 if X.shape[1] >= 300 else 32) if "K64" in blocks else (32 if "K32" in blocks else 8)
+    if "KT" in blocks:
+        n_dir = int(np.clip(X.shape[1] // 8, 1, 64))
+    kp = kernel_fit(X, n_dir, seed) if blocks & {"K", "KY", "K32", "K64", "KT"} else None
     return transform(X, blocks, kp)
 
 
+def soft(decision):
+    """Class probabilities from ridge decision values."""
+    d = decision if decision.ndim > 1 else np.column_stack([-decision, decision])
+    e = np.exp(d - d.max(axis=1, keepdims=True))
+    return e / e.sum(axis=1, keepdims=True)
+
+
+def vote_score(task, X, y, config, seed):
+    """Average ExtraTrees on the left blocks with ridge on the right blocks, same folds."""
+    left, right = config.split("|")
+    FL, FR = features(X, left, seed), features(X, right, seed)
+    cls = task == "classification"
+    alphas = np.logspace(-3, 3, 10)
+    if cls:
+        cv = (StratifiedKFold if np.unique(y, return_counts=True)[1].max() >= 5 else KFold)(5, shuffle=True, random_state=seed)
+        et = ExtraTreesClassifier(n_estimators=200, max_features=0.1, random_state=seed, n_jobs=-1)
+        ridge = make_pipeline(StandardScaler(), RidgeClassifierCV(alphas=alphas))
+        labels = np.unique(y)
+        probs = np.zeros((len(y), len(labels)))
+        for tr, te in cv.split(FL, y):
+            et.fit(FL[tr], y[tr])
+            pe = np.zeros((len(te), len(labels)))
+            pe[:, np.searchsorted(labels, et.classes_)] = et.predict_proba(FL[te])
+            try:
+                ridge.fit(FR[tr], y[tr])
+                pr = np.zeros_like(pe)
+                pr[:, np.searchsorted(labels, ridge.classes_)] = soft(ridge.decision_function(FR[te]))
+            except np.linalg.LinAlgError:
+                pr = pe
+            probs[te] = (pe + pr) / 2
+        score = float((labels[probs.argmax(axis=1)] == y).mean())
+    else:
+        cv = KFold(5, shuffle=True, random_state=seed)
+        et = ExtraTreesRegressor(n_estimators=200, random_state=seed, n_jobs=-1)
+        ridge = make_pipeline(StandardScaler(), RidgeCV(alphas=alphas))
+        a = cross_val_predict(et, FL, y, cv=cv)
+        try:
+            b = cross_val_predict(ridge, FR, y, cv=cv)
+        except np.linalg.LinAlgError:
+            b = a
+        score = float(np.sqrt((((a + b) / 2 - y) ** 2).mean()))
+    return score, FL.shape[1] + FR.shape[1]
+
+
 def cv_score(task, X, y, config, seed):
+    if "|" in config:
+        return vote_score(task, X, y, config, seed)
     F = features(X, config, seed)
     _, learner = parse(config)
     cls = task == "classification"
@@ -266,6 +443,11 @@ def all_configs():
     return out + ["K:ridge", "KY:ridge", "K32:ridge", "P+K:ridge", "P+KY:ridge"]
 
 
+V = "P+S+Ps+Pr"
+BIG_CONFIGS = [V + "+Sr", "P+SQ+Ps+Pr", V + "+Sd", V + "+K32", V + "+KY", V + "+K32+C", V + "+SY",
+               V + "|K32", V + "|K64", V + "+C|K64", "P+SQ+Ps+Pr|K64", "P+S|K64"]
+BASIS_CONFIGS = [V + "+WG", V + "+WH", V + "+WC", V + "+WS", V + "+WE", V + "+WS+WE", V + "+WG+WC"]
+NORM_CONFIGS = [V + "+N1", V + "+N4", V + "+Nm", V + "+Nh", V + "+Ns", V + "+N1+Nm", V + "+Nh+N1+N4+Nm"]
 NEW_BLOCK_CONFIGS = ["D", "H", "G", "W", "F", "Wr", "Fr", "P+S+D", "P+S+H", "P+S+G", "P+S+W", "P+S+F", "P+S+Wr", "P+S+Fr",
                      "P+S+H+D", "P+S+H+G", "P+S+W+F", "P+S+H+W+F", "P+S+H+G+W+F",
                      "Pd", "Pc", "Dc", "P+S+Pd", "P+S+Pc", "P+S+Dc", "P+S+Pd+Pc", "P+S+D+Dc", "P+S+D+Pd", "P+S+Dc+Pc",
@@ -299,7 +481,8 @@ def main():
     if os.path.exists(path):
         p = pd.read_csv(path, keep_default_na=False)
         known = set(zip(p.config, p.seed, p.task, p.dataset))
-    configs = NEW_BLOCK_CONFIGS if a.configs == "new" else (a.configs.split(",") if a.configs else all_configs())
+    named = {"new": NEW_BLOCK_CONFIGS, "big": BIG_CONFIGS, "basis": BASIS_CONFIGS, "norm": NORM_CONFIGS}
+    configs = named[a.configs] if a.configs in named else (a.configs.split(",") if a.configs else all_configs())
     # cheapest first, so partial results are already useful
     probe = np.random.default_rng(0).standard_normal((20, 1024)).cumsum(axis=1)
     sizes = {c: features(probe, c, 0).shape[1] for c in configs}

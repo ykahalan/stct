@@ -9,6 +9,8 @@
 | paper_pooled:et      |         26 |  1.1932 |      3.6923 |       1 | 15/11 p=0.940 | 19/7 p=0.071     |
 | paper_tuned:et_tuned |         26 |  1.208  |      3.6923 |       1 | 15/11 p=0.920 | 19/7 p=0.080     |
 | paper_views:et_tuned |         26 |  1.1512 |      3.5    |       1 | 16/10 p=0.600 | 20/6 p=0.029     |
+| paper_vote:et_ridge  |         26 |  1.119  |      3.1154 |       1 | 18/8 p=0.227  | 20/6 p=0.029     |
+| paper_fast:et_ridge  |         26 |  1.1313 |      3.2308 |       1 | 18/8 p=0.303  | 18/8 p=0.269     |
 | minirocket:ridge     |         26 |  1.2256 |      4.1154 |       2 | 15/11 p=0.600 | 15/11 p=0.515    |
 
 Published methods alone, mean rank: DrCIF 3.5, FreshPRINCE 4.2, InceptionTime 5.4, RotF 5.6, ROCKET 5.8, RandF 6.9, Ridge 7.5, XGBoost 7.7, GridSVR 7.9, ResNet 8.3, FPCR 8.7, 1NN-DTW 9.0, FCN 10.3
@@ -22,6 +24,8 @@ Published methods alone, mean rank: DrCIF 3.5, FreshPRINCE 4.2, InceptionTime 5.
 | paper_pooled:et      |         10 |  1.1932 |         3.5 |       1 | 4/6 p=0.557 | 10/0 p=0.002     |
 | paper_tuned:et_tuned |         10 |  1.2202 |         3.7 |       1 | 3/7 p=0.375 | 10/0 p=0.002     |
 | paper_views:et_tuned |         10 |  1.1753 |         3.6 |       1 | 4/6 p=0.922 | 9/1 p=0.049      |
+| paper_vote:et_ridge  |         10 |  1.1677 |         3.6 |       1 | 5/5 p=1.000 | 8/2 p=0.193      |
+| paper_fast:et_ridge  |         10 |  1.1869 |         3.9 |       1 | 5/5 p=0.695 | 6/4 p=1.000      |
 | minirocket:ridge     |         10 |  1.2062 |         4.8 |       2 | 5/5 p=0.922 | 7/3 p=0.695      |
 
 Published methods alone, mean rank: DrCIF 3.4, FreshPRINCE 4.9, RotF 5.2, InceptionTime 5.8, Ridge 5.9, ROCKET 6.4, GridSVR 6.5, RandF 7.2, ResNet 7.6, XGBoost 8.5, FPCR 9.0, 1NN-DTW 9.5, FCN 11.1
@@ -33,6 +37,8 @@ Published methods alone, mean rank: DrCIF 3.4, FreshPRINCE 4.9, RotF 5.2, Incept
 | fixed:et             |     133.85 |     1.26 |       0.95 |
 | fixed:rf             |     133.85 |     1.53 |       0.92 |
 | minirocket:ridge     |    9996    |     1.89 |       1.08 |
+| paper_fast:et_ridge  |    2096.12 |     2.81 |       1.98 |
 | paper_pooled:et      |     344.88 |     2.56 |       1.87 |
 | paper_tuned:et_tuned |     417.5  |     3.35 |       2.65 |
 | paper_views:et_tuned |     672.73 |     6.71 |       5.24 |
+| paper_vote:et_ridge  |    2096.12 |    17.94 |      15.8  |
