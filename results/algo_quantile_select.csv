@@ -1,0 +1,4 @@
+acc_gain,acc_better,acc_worse,rmse_ratio,rmse_better,rmse_worse,step,candidate,features,passes
+-0.0028962547753099152,35,40,0.9741096715261635,14,12,1,global_q,506,False
+-0.0032015782436044795,34,50,0.9833745401610261,13,13,1,window_q,542,False
+-0.0038563778689454284,31,42,0.9993229342703478,13,13,1,level_q,596,False

@@ -1,0 +1,153 @@
+blocks,weighting,score,features,weights,seed,T,dataset
+CW,fixed,0.7666666666666667,1440,,42,176,Adiac
+CW,chosen,0.7743589743589744,1440,0.25 0.25 0.25 0.25 0.5,42,176,Adiac
+CWD,fixed,0.7717948717948718,2100,,42,176,Adiac
+CWD,chosen,0.7589743589743589,2100,0.0 0.25 0.25 0.25 0.25,42,176,Adiac
+CW,fixed,0.8055555555555556,2137,,42,251,ArrowHead
+CW,chosen,0.8055555555555556,2137,inf 0.0 1.0 0.0 0.0,42,251,ArrowHead
+CWD,fixed,0.8333333333333334,3067,,42,251,ArrowHead
+CWD,chosen,0.7777777777777778,3067,inf 1.0 1.0 0.0 0.0,42,251,ArrowHead
+CW,fixed,0.8333333333333334,4026,,42,470,Beef
+CW,chosen,0.7666666666666667,4026,4.0 1.0 inf 1.0 0.5,42,470,Beef
+CWD,fixed,0.8333333333333334,6114,,42,470,Beef
+CWD,chosen,0.8,6114,inf 1.0 inf 1.0 1.0,42,470,Beef
+CW,fixed,0.9,4434,,42,512,BeetleFly
+CW,chosen,0.9,4434,inf 1.0 0.0 inf 0.0,42,512,BeetleFly
+CWD,fixed,0.85,6738,,42,512,BeetleFly
+CWD,chosen,0.9,6738,inf 1.0 1.0 inf 2.0,42,512,BeetleFly
+CW,fixed,1.0,4434,,42,512,BirdChicken
+CW,chosen,1.0,4434,1.0 1.0 1.0 1.0 1.0,42,512,BirdChicken
+CWD,fixed,1.0,6738,,42,512,BirdChicken
+CWD,chosen,1.0,6738,2.0 1.0 1.0 1.0 1.0,42,512,BirdChicken
+CW,fixed,1.0,1144,,42,128,BME
+CW,chosen,1.0,1144,1.0 1.0 2.0 inf 1.0,42,128,BME
+CWD,fixed,1.0,1528,,42,128,BME
+CWD,chosen,1.0,1528,1.0 1.0 2.0 inf 1.0,42,128,BME
+CW,fixed,0.95,4626,,42,577,Car
+CW,chosen,0.9333333333333333,4626,0.0 0.0 0.25 1.0 4.0,42,577,Car
+CWD,fixed,0.95,7314,,42,577,Car
+CWD,chosen,0.95,7314,0.0 0.0 0.25 1.0 4.0,42,577,Car
+CW,fixed,1.0,1144,,42,128,CBF
+CW,chosen,1.0,1144,1.0 2.0 1.0 1.0 1.0,42,128,CBF
+CWD,fixed,1.0,1528,,42,128,CBF
+CWD,chosen,1.0,1528,1.0 2.0 1.0 1.0 1.0,42,128,CBF
+CW,fixed,1.0,179,,42,24,Chinatown
+CW,chosen,1.0,179,inf inf inf inf inf,42,24,Chinatown
+CWD,fixed,0.95,215,,42,24,Chinatown
+CWD,chosen,1.0,215,inf 2.0 inf 1.0 2.0,42,24,Chinatown
+CW,fixed,1.0,2257,,42,286,Coffee
+CW,chosen,1.0,2257,1.0 1.0 1.0 1.0 1.0,42,286,Coffee
+CWD,fixed,1.0,3517,,42,286,Coffee
+CWD,chosen,1.0,3517,1.0 1.0 1.0 1.0 1.0,42,286,Coffee
+CW,fixed,0.8153846153846154,2477,,42,300,CricketX
+CW,chosen,0.8307692307692308,2477,0.0 0.0 0.25 0.25 0.25,42,300,CricketX
+CWD,fixed,0.8333333333333334,3809,,42,300,CricketX
+CWD,chosen,0.8333333333333334,3809,0.0 0.0 0.25 0.25 0.0,42,300,CricketX
+CW,fixed,0.8125,2657,,42,345,DiatomSizeReduction
+CW,chosen,0.8125,2657,1.0 1.0 1.0 1.0 1.0,42,345,DiatomSizeReduction
+CWD,fixed,0.8125,4205,,42,345,DiatomSizeReduction
+CWD,chosen,0.8125,4205,1.0 1.0 1.0 1.0 1.0,42,345,DiatomSizeReduction
+CW,fixed,0.835,501,,42,80,DistalPhalanxOutlineAgeGroup
+CW,chosen,0.835,501,inf inf inf inf inf,42,80,DistalPhalanxOutlineAgeGroup
+CWD,fixed,0.845,741,,42,80,DistalPhalanxOutlineAgeGroup
+CWD,chosen,0.85,741,1.0 2.0 0.0 0.0 4.0,42,80,DistalPhalanxOutlineAgeGroup
+CW,fixed,0.88,561,,42,96,ECG200
+CW,chosen,0.88,561,inf inf inf inf inf,42,96,ECG200
+CWD,fixed,0.88,849,,42,96,ECG200
+CWD,chosen,0.92,849,0.0 1.0 0.25 4.0 0.5,42,96,ECG200
+CW,fixed,1.0,1174,,42,136,ECGFiveDays
+CW,chosen,1.0,1174,2.0 1.0 4.0 inf 1.0,42,136,ECGFiveDays
+CWD,fixed,1.0,1684,,42,136,ECGFiveDays
+CWD,chosen,1.0,1684,1.0 1.0 4.0 inf 1.0,42,136,ECGFiveDays
+CW,fixed,0.9166666666666666,2657,,42,350,FaceFour
+CW,chosen,0.9166666666666666,2657,1.0 0.0 1.0 1.0 2.0,42,350,FaceFour
+CWD,fixed,0.9166666666666666,4205,,42,350,FaceFour
+CWD,chosen,0.9166666666666666,4205,2.0 0.0 1.0 0.0 2.0,42,350,FaceFour
+CW,fixed,0.9,1150,,42,131,FacesUCR
+CW,chosen,0.93,1150,0.25 0.0 0.0 0.0 0.0,42,131,FacesUCR
+CWD,fixed,0.93,1630,,42,131,FacesUCR
+CWD,chosen,0.96,1630,0.0 0.0 0.0 0.0 0.0,42,131,FacesUCR
+CW,fixed,0.96,3990,,42,463,Fish
+CW,chosen,0.9828571428571429,3990,0.0 0.0 0.0 1.0 0.0,42,463,Fish
+CWD,fixed,0.9714285714285714,6042,,42,463,Fish
+CWD,chosen,0.9771428571428571,6042,0.0 0.5 0.0 0.25 1.0,42,463,Fish
+CW,fixed,0.98,1332,,42,150,GunPoint
+CW,chosen,0.98,1332,0.0 1.0 1.0 0.0 1.0,42,150,GunPoint
+CWD,fixed,0.96,1872,,42,150,GunPoint
+CWD,chosen,0.96,1872,0.0 1.0 4.0 1.0 1.0,42,150,GunPoint
+CW,fixed,0.8807339449541285,3654,,42,431,Ham
+CW,chosen,0.8623853211009175,3654,0.0 2.0 0.0 0.0 0.0,42,431,Ham
+CWD,fixed,0.8807339449541285,5562,,42,431,Ham
+CWD,chosen,0.8440366972477065,5562,0.0 4.0 0.0 0.25 0.0,42,431,Ham
+CW,fixed,0.625,4434,,42,512,Herring
+CW,chosen,0.609375,4434,1.0 1.0 0.0 4.0 0.0,42,512,Herring
+CWD,fixed,0.609375,6738,,42,512,Herring
+CWD,chosen,0.59375,6738,0.0 1.0 0.0 0.0 0.0,42,512,Herring
+CW,fixed,0.9701492537313433,179,,42,24,ItalyPowerDemand
+CW,chosen,0.9701492537313433,179,inf inf inf inf inf,42,24,ItalyPowerDemand
+CWD,fixed,0.9552238805970149,215,,42,24,ItalyPowerDemand
+CWD,chosen,0.9552238805970149,215,2.0 inf 1.0 1.0 0.25,42,24,ItalyPowerDemand
+CW,fixed,0.7428571428571429,2537,,42,319,Lightning7
+CW,chosen,0.7142857142857143,2537,0.0 0.25 inf 0.0 0.0,42,319,Lightning7
+CWD,fixed,0.7428571428571429,3941,,42,319,Lightning7
+CWD,chosen,0.7571428571428571,3941,0.0 0.5 inf 0.25 0.5,42,319,Lightning7
+CW,fixed,1.0,3954,,42,448,Meat
+CW,chosen,1.0,3954,0.0 1.0 0.0 2.0 1.0,42,448,Meat
+CWD,fixed,1.0,5970,,42,448,Meat
+CWD,chosen,1.0,5970,0.0 1.0 1.0 2.0 1.0,42,448,Meat
+CW,fixed,0.7401574803149606,561,,42,99,MedicalImages
+CW,chosen,0.7401574803149606,561,inf inf inf inf inf,42,99,MedicalImages
+CWD,fixed,0.7585301837270341,849,,42,99,MedicalImages
+CWD,chosen,0.7270341207349081,849,0.25 0.0 0.25 0.0 0.0,42,99,MedicalImages
+CW,fixed,0.8,525,,42,84,MoteStrain
+CW,chosen,0.8,525,inf inf inf inf inf,42,84,MoteStrain
+CWD,fixed,0.9,765,,42,84,MoteStrain
+CWD,chosen,0.9,765,2.0 1.0 2.0 0.0 0.5,42,84,MoteStrain
+CW,fixed,0.8666666666666667,4434,,42,570,OliveOil
+CW,chosen,0.8666666666666667,4434,inf 1.0 1.0 0.0 1.0,42,570,OliveOil
+CWD,fixed,0.8666666666666667,7122,,42,570,OliveOil
+CWD,chosen,0.8666666666666667,7122,2.0 1.0 1.0 1.0 1.0,42,570,OliveOil
+CW,fixed,0.955,3654,,42,427,OSULeaf
+CW,chosen,0.975,3654,0.0 0.0 1.0 0.0 0.0,42,427,OSULeaf
+CWD,fixed,0.965,5562,,42,427,OSULeaf
+CWD,chosen,0.965,5562,1.0 0.0 1.0 0.0 0.0,42,427,OSULeaf
+CW,fixed,1.0,1332,,42,144,Plane
+CW,chosen,1.0,1332,1.0 1.0 1.0 1.0 1.0,42,144,Plane
+CWD,fixed,1.0,1872,,42,144,Plane
+CWD,chosen,1.0,1872,1.0 1.0 1.0 1.0 1.0,42,144,Plane
+CW,fixed,0.9,477,,42,70,SonyAIBORobotSurface1
+CW,chosen,0.9,477,inf inf inf inf inf,42,70,SonyAIBORobotSurface1
+CWD,fixed,0.95,669,,42,70,SonyAIBORobotSurface1
+CWD,chosen,0.95,669,1.0 1.0 1.0 0.0 0.0,42,70,SonyAIBORobotSurface1
+CW,fixed,0.952,1144,,42,128,SwedishLeaf
+CW,chosen,0.944,1144,1.0 0.25 0.25 0.25 0.25,42,128,SwedishLeaf
+CWD,fixed,0.952,1528,,42,128,SwedishLeaf
+CWD,chosen,0.95,1528,0.5 1.0 0.25 0.25 0.25,42,128,SwedishLeaf
+CW,fixed,1.0,2997,,42,398,Symbols
+CW,chosen,1.0,2997,0.0 0.0 0.0 1.0 4.0,42,398,Symbols
+CWD,fixed,1.0,4761,,42,398,Symbols
+CWD,chosen,1.0,4761,1.0 0.0 1.0 1.0 inf,42,398,Symbols
+CW,fixed,0.9933333333333333,453,,42,60,SyntheticControl
+CW,chosen,0.9933333333333333,453,inf inf inf inf inf,42,60,SyntheticControl
+CWD,fixed,0.9966666666666667,579,,42,60,SyntheticControl
+CWD,chosen,0.9966666666666667,579,1.0 2.0 1.0 0.5 1.0,42,60,SyntheticControl
+CW,fixed,0.775,2227,,42,277,ToeSegmentation1
+CW,chosen,0.775,2227,0.25 2.0 0.0 0.0 inf,42,277,ToeSegmentation1
+CWD,fixed,0.75,3451,,42,277,ToeSegmentation1
+CWD,chosen,0.775,3451,0.25 4.0 0.0 1.0 inf,42,277,ToeSegmentation1
+CW,fixed,1.0,2227,,42,275,Trace
+CW,chosen,1.0,2227,1.0 1.0 1.0 1.0 1.0,42,275,Trace
+CWD,fixed,1.0,3451,,42,275,Trace
+CWD,chosen,1.0,3451,1.0 1.0 1.0 1.0 1.0,42,275,Trace
+CW,fixed,1.0,513,,42,82,TwoLeadECG
+CW,chosen,1.0,513,inf inf inf inf inf,42,82,TwoLeadECG
+CWD,fixed,1.0,753,,42,82,TwoLeadECG
+CWD,chosen,1.0,753,2.0 1.0 1.0 2.0 1.0,42,82,TwoLeadECG
+CW,fixed,0.9473684210526315,2077,,42,234,Wine
+CW,chosen,0.9473684210526315,2077,4.0 4.0 1.0 4.0 1.0,42,234,Wine
+CWD,fixed,0.9824561403508771,2947,,42,234,Wine
+CWD,chosen,0.9824561403508771,2947,4.0 0.25 1.0 0.0 1.0,42,234,Wine
+CW,fixed,0.6441947565543071,2197,,42,270,WordSynonyms
+CW,chosen,0.6367041198501873,2197,0.25 0.25 0.25 0.0 0.5,42,270,WordSynonyms
+CWD,fixed,0.6441947565543071,3385,,42,270,WordSynonyms
+CWD,chosen,0.6367041198501873,3385,0.25 0.25 0.5 0.0 1.0,42,270,WordSynonyms
