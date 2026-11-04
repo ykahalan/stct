@@ -1,20 +1,22 @@
 """Time regressors and count their features on one thread, same machine, same pass.
 
-    python paper_time_reg.py --part 0 --parts 4
-    python paper_time_reg.py --methods RotF,FreshPRINCE --part 0 --parts 4
+    python paper_time_reg.py --part 0 --parts 6
+    python paper_time_reg.py --methods RotF,FreshPRINCE --part 0 --parts 6
 
 For each TSER dataset, the STCT+ regressor and the published methods that can run
 here are fitted on the training split and predict the test split one after
 another in the same process, one thread each.  The references use the
-configurations of the published benchmark code (tsml-eval): aeon's RocketRegressor,
-RotationForestRegressor, FreshPRINCERegressor and 1-NN DTW with a 10% window,
-and scikit-learn's RidgeCV, 100-tree random forest and grid-searched SVR on the
-raw series.  Test targets are read only to check RMSE against the published
-results.  Appends to results/paper_time_reg.csv and skips finished (dataset,
-method) pairs on resume.
+configurations of the published benchmark code (tsml-eval): aeon's RocketRegressor
+and 1-NN DTW with a 10% window, and scikit-learn's RidgeCV, 100-tree random forest
+and grid-searched SVR on the raw series.  aeon's RotationForestRegressor and
+FreshPRINCERegressor (which needs tsfresh) run only when named in --methods: their
+published fit + predict times total 15.6 and 14.5 hours, and the paper table
+lists them as not run.  Test targets are read only to check RMSE against the
+published results.  Appends to results/paper_time_reg.csv and skips finished
+(dataset, method) pairs on resume.
 
-Not run: DrCIF and the deep networks (published fit times total 9 to 175 hours),
-XGBoost and FPCR (their packages are not installed here).
+Not included: DrCIF and the deep networks (published fit + predict times total
+9.3 to 175 hours), XGBoost and FPCR (their packages are not installed here).
 """
 import os
 
@@ -53,6 +55,7 @@ METHODS = {
     "RotF": (lambda: RotationForestRegressor(random_state=bench.RNG, n_jobs=1), "raw"),
     "FreshPRINCE": (lambda: FreshPRINCERegressor(random_state=bench.RNG, n_jobs=1), "aeon"),
 }
+SLOW = ("RotF", "FreshPRINCE")  # run only when named in --methods
 
 
 def n_features(name, model, X):
@@ -75,7 +78,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--part", type=int, default=0)
     ap.add_argument("--parts", type=int, default=1)
-    ap.add_argument("--methods", default=",".join(METHODS))
+    ap.add_argument("--methods", default=",".join(m for m in METHODS if m not in SLOW))
     a = ap.parse_args()
     methods = a.methods.split(",")
     known = set()

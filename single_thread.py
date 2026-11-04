@@ -1,4 +1,4 @@
-"""Time STCT+ and references on one thread, on this machine, for all datasets.
+"""Time the earlier STCT recipes and references on one thread, on this machine, for all datasets.
 
     python single_thread.py
 

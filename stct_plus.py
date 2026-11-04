@@ -1,18 +1,24 @@
-"""STCT+ : the Short-Time Chebyshev Transform with a prime ladder and pooled statistics.
+"""STCT views: closed-form Short-Time Chebyshev features, the forest input of STCT+.
 
-Both blocks are closed-form and training-free, and their size does not depend
-on series length.
+Every block is closed-form and training-free, and its size does not depend on
+series length.
 
-* ``stct_ladder`` -- each series is cut into 1, 2, 3, 5, 7, 11 and 13 tiling
-  windows, and every window is described by the coefficients of a low-degree
+* ``stct_fixed`` -- the paper's representation: each series is cut into 8 and 16
+  windows, and every window is described by the coefficients of a degree-4
   Chebyshev least-squares fit plus the RMS fit residual.
 
 * ``stct_pooled`` -- the same fit is slid along the series at several window
   lengths, and each coefficient channel's time course is collapsed into
   shift-invariant statistics.
 
-``stct_plus`` concatenates the two.  ``stct_fixed`` is the paper's original
-representation, kept as the baseline.
+* ``stct_views`` -- paper windows and pooled statistics at up to six window
+  lengths, plus the paper windows of the sorted series and of its
+  autocorrelation.  These are the views the STCT+ forest uses (``stct_models.py``;
+  compiled, with identical values, in ``stct_fast.py``).
+
+``stct_plus`` concatenates a window block (the paper windows with ``paper=True``,
+otherwise the prime ladder of ``stct_ladder``: 1, 2, 3, 5, 7, 11 and 13 tiling
+windows) with pooled statistics, plus optional blocks tested during development.
 """
 from __future__ import annotations
 
