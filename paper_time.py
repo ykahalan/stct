@@ -1,6 +1,7 @@
 """Time classifiers and count their features on one thread, same machine, same pass.
 
     python paper_time.py --part 0 --parts 4
+    python paper_time.py --methods R-STSF,RIST,FreshPRINCE,1NN-DTW
 
 For each dataset, STCT+ and the published methods that can run here (aeon
 implementations, configured as published) are fitted on the training split and
@@ -9,8 +10,9 @@ Test labels are read only to check accuracy against the published results.
 Datasets are spread over --parts processes.  Appends to results/paper_time.csv
 and skips finished (dataset, method) pairs on resume.
 
-HC2, InceptionTime, 1NN-DTW and FreshPRINCE are not run: their published fit
-times total 39 to 290 hours on the UCR archive.
+R-STSF, RIST, FreshPRINCE and 1NN-DTW (full window) run only when named in
+--methods, after the main pass.  HC2 and the deep networks are not run: HC2's
+published fit time totals 290 hours, and the networks train on a GPU.
 """
 import os
 
@@ -28,8 +30,10 @@ from aeon.classification.convolution_based import (MiniRocketClassifier, MultiRo
                                                    MultiRocketHydraClassifier, RocketClassifier)
 from aeon.classification.convolution_based._hydra import _SparseScaler
 from aeon.classification.dictionary_based import WEASEL_V2
-from aeon.classification.feature_based import Catch22Classifier
-from aeon.classification.interval_based import QUANTClassifier
+from aeon.classification.distance_based import KNeighborsTimeSeriesClassifier
+from aeon.classification.feature_based import Catch22Classifier, FreshPRINCEClassifier
+from aeon.classification.hybrid import RISTClassifier
+from aeon.classification.interval_based import RSTSF, QUANTClassifier
 from aeon.classification.shapelet_based import RDSTClassifier
 from aeon.transformations.collection.convolution_based import MultiRocket
 from aeon.transformations.collection.convolution_based._hydra import HydraTransformer
@@ -76,7 +80,12 @@ METHODS = {
     "ROCKET": lambda: RocketClassifier(random_state=bench.RNG, n_jobs=1),
     "QUANT": lambda: QUANTClassifier(random_state=bench.RNG),
     "Catch22": lambda: Catch22Classifier(catch24=False, random_state=bench.RNG, n_jobs=1),
+    "R-STSF": lambda: RSTSF(random_state=bench.RNG, n_jobs=1),
+    "RIST": lambda: RISTClassifier(random_state=bench.RNG, n_jobs=1),
+    "FreshPRINCE": lambda: FreshPRINCEClassifier(random_state=bench.RNG, n_jobs=1),
+    "1NN-DTW": lambda: KNeighborsTimeSeriesClassifier(distance="dtw", n_jobs=1),
 }
+SLOW = ("R-STSF", "RIST", "FreshPRINCE", "1NN-DTW")  # run only when named in --methods
 
 
 def n_features(model, X):
@@ -85,7 +94,11 @@ def n_features(model, X):
         return model.n_features(X)
     if isinstance(model, MRHydra):
         return model.n_features_
+    if isinstance(model, KNeighborsTimeSeriesClassifier):
+        return 0
     est = getattr(model, "estimator_", None) or getattr(model, "clf", None)
+    if est is None:  # R-STSF, RIST and FreshPRINCE keep their final learner under a private name
+        est = next((v for v in vars(model).values() if hasattr(v, "n_features_in_") or hasattr(v, "steps")), None)
     if hasattr(est, "steps"):
         est = est.steps[-1][1]
     return int(est.n_features_in_) if hasattr(est, "n_features_in_") else np.nan
@@ -95,13 +108,17 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--part", type=int, default=0)
     ap.add_argument("--parts", type=int, default=1)
+    ap.add_argument("--methods", default=",".join(m for m in METHODS if m not in SLOW))
+    ap.add_argument("--datasets", default=",".join(bench.UCR))
+    ap.add_argument("--out", default=OUT)
     a = ap.parse_args()
+    methods, out = a.methods.split(","), a.out
     known = set()
-    if os.path.exists(OUT):
-        p = pd.read_csv(OUT)
+    if os.path.exists(out):
+        p = pd.read_csv(out)
         known = set(zip(p.dataset, p.method))
-    for i, name in enumerate(bench.UCR):
-        if i % a.parts != a.part or all((name, m) in known for m in METHODS):
+    for i, name in enumerate(a.datasets.split(",")):
+        if i % a.parts != a.part or all((name, m) in known for m in methods):
             continue
         try:
             Xtr, ytr, Xte, yte = bench.load("classification", name)
@@ -109,7 +126,8 @@ def main():
             print(f"[failed] {name}: {str(e)[:120]}", flush=True)
             continue
         A, B = Xtr[:, None, :], Xte[:, None, :]
-        for method, make in METHODS.items():
+        for method in methods:
+            make = METHODS[method]
             if (name, method) in known:
                 continue
             try:
@@ -125,7 +143,7 @@ def main():
             except Exception as e:
                 print(f"[failed] {name} {method}: {type(e).__name__} {str(e)[:120]}", flush=True)
                 continue
-            pd.DataFrame([row]).to_csv(OUT, mode="a", header=not os.path.exists(OUT), index=False)
+            pd.DataFrame([row]).to_csv(out, mode="a", header=not os.path.exists(out), index=False)
             print(f"{name} {method} {seconds:.1f}s feats={row['n_features']} acc={row['accuracy']:.3f}", flush=True)
 
 
