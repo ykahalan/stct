@@ -92,7 +92,8 @@ class _STCTModel:
             blocks = [W, np.hstack([C, D])] if self.recipe == "dilated" else blocks + [D]
         return np.nan_to_num(V), [np.nan_to_num(B) for B in blocks]
 
-    def _fit(self, X, y, forest, ridge):
+    def _fit_kernels(self, X):
+        """Kernel parameters of this recipe, from the series alone (no labels)."""
         if self.recipe not in RECIPES:
             raise ValueError(f"recipe must be one of {RECIPES}")
         X = _2d(X)
@@ -110,7 +111,11 @@ class _STCTModel:
             self.dparams_ = SF.dilated_fit(X, d, seed) if d > 0 else None
         # below length 128 the dilated kernels are the only ridge and enter at half the forest's weight
         self.ridge_weight_ = 1.0 if long_ else 0.5
-        V, blocks = self._blocks(X)
+        return self
+
+    def _fit(self, X, y, forest, ridge):
+        X = _2d(X)
+        V, blocks = self._fit_kernels(X)._blocks(X)
         self.forest_ = forest.fit(V, y)
         self.ridges_ = []
         for B in blocks:
