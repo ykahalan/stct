@@ -1,28 +1,19 @@
-"""STCT+ classifiers and regressor with an sklearn-style interface.
+"""STCT+ classifier and regressor with an sklearn-style interface.
 
-``STCTClassifier()`` is STCT+: ExtraTrees of 200 trees on the STCT views
-(Chebyshev fits on fixed windows, pooled statistics of sliding fits, and the
-paper features of the sorted series and of its autocorrelation), averaged with
-ridges on Chebyshev kernels.  Kernels get one random direction per 8 samples of
-series length, shared equally among the kernel types in use, at most 64 per type:
+``STCTClassifier`` averages an ExtraTrees forest of 200 trees (10% of features
+per split) on the STCT views with ridge classifiers on Chebyshev kernel blocks:
 
-* from length 128 up, context kernels (pairs of neighbouring windows) and dilated
-  kernels (degree-4 fits to 9 samples spaced 1, 2, 4, ... apart, with no weight
-  on the level coefficient) get one direction per 16 samples each, and winner
-  counts (groups of 8 directions competing over each window's coefficients) are
-  added, each block with its own ridge;
-* below length 128 the dilated kernels alone get one direction per 8 samples and
-  enter at half the forest's weight.
+* from length 128 up, context kernels and dilated kernels with
+  min(64, T // 16) directions per window length or dilation, and winner counts,
+  each block with its own ridge at the forest's weight;
+* below length 128, dilated kernels alone with min(64, T // 8) directions, at
+  half the forest's weight.
 
-Earlier recipes stay available: ``recipe="trio"`` (100 trees, context kernels and
-winner counts), ``"four"`` (the three-model recipe plus full-size dilated
-kernels), ``"dilated"`` (the three-model budget, half-size context and dilated
-kernels sharing one ridge) and ``"fast"`` (one ridge on threshold kernels).
-``STCTRegressor`` is the fast recipe for regression: ExtraTrees of 50 trees,
-half the features per split and 2 samples per leaf, averaged with a ridge on
-threshold kernels from length 128 up.  Shorter series use the forest alone.
+``STCTRegressor`` averages an ExtraTrees forest of 50 trees (half the features
+per split, 2 samples per leaf) on the same views with a ridge on threshold
+kernels from length 128 up; shorter series use the forest alone.
 
-Kernel weightings and thresholds come from at most 32 training series, without labels.
+Kernel directions and thresholds come from at most 32 training series, without labels.
 """
 import numpy as np
 from sklearn.ensemble import ExtraTreesClassifier, ExtraTreesRegressor
@@ -30,11 +21,10 @@ from sklearn.linear_model import RidgeClassifierCV, RidgeCV
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
-import stct_fast as SF
+import stct_features as SF
 
-MIN_LENGTH = 128
+MIN_LENGTH = 128  # series at least this long get the full kernel set
 ALPHAS = np.logspace(-3, 3, 10)
-RECIPES = ("plus", "trio", "four", "dilated", "fast")
 
 
 def _2d(X):
@@ -50,67 +40,16 @@ def _soft(decision):
 
 
 class _STCTModel:
-    def __init__(self, recipe="fast", random_state=42, n_jobs=-1):
-        self.recipe = recipe
+    def __init__(self, random_state=42, n_jobs=-1):
         self.random_state = random_state
         self.n_jobs = n_jobs
 
     def get_params(self, deep=True):
-        return dict(recipe=self.recipe, random_state=self.random_state, n_jobs=self.n_jobs)
+        return dict(random_state=self.random_state, n_jobs=self.n_jobs)
 
     def set_params(self, **p):
         for k, v in p.items():
             setattr(self, k, v)
-        return self
-
-    def _n_trees(self):
-        return 200 if self.recipe == "plus" else 100
-
-    def _distinct(self, X):
-        """Whether paper windows that collapse to the same count are computed once (never in these recipes)."""
-        return False
-
-    def _kernel_sizes(self, X):
-        """Directions per scale or dilation for context and dilated kernels; 0 leaves a block out."""
-        T = X.shape[1]
-        n = SF.n_kernels(T)
-        if self.recipe == "plus":
-            return (min(64, T // 16),) * 2 if T >= MIN_LENGTH else (0, n)
-        if T < MIN_LENGTH:
-            return 0, 0
-        return {"trio": (n, 0), "four": (n, n), "dilated": (max(1, n // 2),) * 2}[self.recipe]
-
-    def _blocks(self, X):
-        """Forest features and the ridge feature blocks of this recipe."""
-        if self.recipe == "fast":
-            V, K = SF.features(X, self.kparams_)
-            return np.nan_to_num(V), [] if K is None else [np.nan_to_num(K)]
-        V, C, W = SF.trio_features(X, self.cparams_, self.wparams_, distinct=self.distinct_)
-        blocks = [B for B in (C, W) if B is not None]
-        if self.dparams_ is not None:
-            D = SF.dilated_features(X, self.dparams_)
-            blocks = [W, np.hstack([C, D])] if self.recipe == "dilated" else blocks + [D]
-        return np.nan_to_num(V), [np.nan_to_num(B) for B in blocks]
-
-    def _fit_kernels(self, X):
-        """Kernel parameters of this recipe, from the series alone (no labels)."""
-        if self.recipe not in RECIPES:
-            raise ValueError(f"recipe must be one of {RECIPES}")
-        X = _2d(X)
-        T, seed = X.shape[1], self.random_state
-        long_ = T >= MIN_LENGTH
-        self.kparams_ = self.cparams_ = self.wparams_ = self.dparams_ = None
-        self.distinct_ = self._distinct(X)
-        if self.recipe == "fast":
-            if long_:
-                self.kparams_ = SF.kernel_fit(X, SF.n_kernels(T), seed, max_series=32)
-        else:
-            c, d = self._kernel_sizes(X)
-            self.cparams_ = SF.context_fit(X, c, seed, 2) if c > 0 else None
-            self.wparams_ = SF.compete_fit(X, seed, SF.winner_groups(T)) if long_ else None
-            self.dparams_ = SF.dilated_fit(X, d, seed) if d > 0 else None
-        # below length 128 the dilated kernels are the only ridge and enter at half the forest's weight
-        self.ridge_weight_ = 1.0 if long_ else 0.5
         return self
 
     def _fit(self, X, y, forest, ridge):
@@ -132,11 +71,27 @@ class _STCTModel:
 
 
 class STCTClassifier(_STCTModel):
-    def __init__(self, recipe="plus", random_state=42, n_jobs=-1):
-        super().__init__(recipe, random_state, n_jobs)
+    def _fit_kernels(self, X):
+        T, seed = X.shape[1], self.random_state
+        if T >= MIN_LENGTH:
+            n = min(64, T // 16)
+            self.cparams_ = SF.context_fit(X, n, seed)
+            self.wparams_ = SF.compete_fit(X, seed, SF.winner_groups(T))
+            self.dparams_ = SF.dilated_fit(X, n, seed)
+            self.ridge_weight_ = 1.0
+        else:
+            self.cparams_ = self.wparams_ = None
+            self.dparams_ = SF.dilated_fit(X, SF.n_kernels(T), seed)
+            self.ridge_weight_ = 0.5
+        return self
+
+    def _blocks(self, X):
+        V, Cb, W = SF.classifier_features(X, self.cparams_, self.wparams_)
+        blocks = [B for B in (Cb, W) if B is not None] + [SF.dilated_features(X, self.dparams_)]
+        return np.nan_to_num(V), [np.nan_to_num(B) for B in blocks]
 
     def fit(self, X, y):
-        forest = ExtraTreesClassifier(n_estimators=self._n_trees(), max_features=0.1,
+        forest = ExtraTreesClassifier(n_estimators=200, max_features=0.1,
                                       random_state=self.random_state, n_jobs=self.n_jobs)
         self._fit(X, y, forest, RidgeClassifierCV)
         self.classes_ = self.forest_.classes_
@@ -158,8 +113,14 @@ class STCTClassifier(_STCTModel):
 
 
 class STCTRegressor(_STCTModel):
-    def __init__(self, recipe="fast", random_state=42, n_jobs=-1):
-        super().__init__(recipe, random_state, n_jobs)
+    def _fit_kernels(self, X):
+        T = X.shape[1]
+        self.kparams_ = SF.kernel_fit(X, SF.n_kernels(T), self.random_state) if T >= MIN_LENGTH else None
+        return self
+
+    def _blocks(self, X):
+        V, K = SF.regressor_features(X, self.kparams_)
+        return np.nan_to_num(V), [] if K is None else [np.nan_to_num(K)]
 
     def fit(self, X, y):
         forest = ExtraTreesRegressor(n_estimators=50, max_features=0.5, min_samples_leaf=2,
